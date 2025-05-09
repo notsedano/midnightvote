@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply bg-dark-950 text-white scroll-smooth;
+  }
+
+  body {
+    @apply font-sans min-h-screen;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-mono tracking-wider text-primary-400;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-6 py-2 font-mono font-semibold rounded-md transition-all duration-300 
+    focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-dark-950;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary-400 text-primary-400 hover:bg-primary-400 hover:text-dark-950;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 bg-dark-800 border-2 border-dark-700 rounded-md 
+    focus:outline-none focus:ring-2 focus:border-primary-400 focus:ring-primary-400 
+    focus:ring-opacity-50 text-white font-mono;
+  }
+
+  .card {
+    @apply bg-dark-800 border border-dark-700 rounded-lg p-6 shadow-lg transition-all duration-300;
+  }
+
+  .cyber-border {
+    @apply relative before:absolute before:inset-0 before:p-[2px] before:rounded-lg
+    before:bg-gradient-to-r before:from-primary-400 before:to-primary-600
+    before:content-[''] before:-z-10;
+  }
+
+  .grid-section {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4;
+  }
+}
+
+.voting-progress {
+  height: 8px;
+  position: relative;
+  overflow: hidden;
+  background-color: theme('colors.dark.700');
+  border-radius: 4px;
+  z-index: 0;
+}
+
+.voting-progress-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  top: 0;
+  background: linear-gradient(90deg, theme('colors.primary.500'), theme('colors.primary.300'));
+  transition: width 0.3s ease;
+}
+
+.block-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.block-item {
+  aspect-ratio: 1/1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: theme('colors.dark.800');
+  border: 1px solid theme('colors.dark.700');
+  border-radius: 4px;
+  font-family: theme('fontFamily.mono');
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.block-item:hover {
+  background: theme('colors.dark.700');
+  transform: translateY(-2px);
+}

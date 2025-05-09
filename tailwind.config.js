@@ -1,0 +1,87 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50: '#f8ffe0',
+          100: '#edffc0',
+          200: '#d9ff7a',
+          300: '#c2fa38',
+          400: '#adeb00', // yellowgreen
+          500: '#8ec800',
+          600: '#6fa000',
+          700: '#547800',
+          800: '#3e5c00',
+          900: '#2a4000',
+          950: '#172300',
+        },
+        dark: {
+          50: '#f6f6f6',
+          100: '#e7e7e7',
+          200: '#d1d1d1',
+          300: '#b0b0b0',
+          400: '#888888',
+          500: '#6d6d6d',
+          600: '#5d5d5d',
+          700: '#4f4f4f',
+          800: '#454545',
+          900: '#3d3d3d',
+          950: '#000000',
+        },
+        success: {
+          50: '#eefff5',
+          100: '#d7ffea',
+          200: '#b2ffd6',
+          300: '#76ffb8',
+          400: '#33f592',
+          500: '#0ade72',
+          600: '#00b85c',
+          700: '#00914b',
+          800: '#00713d',
+          900: '#005d34',
+        },
+        warning: {
+          50: '#fff8eb',
+          100: '#ffebc8',
+          200: '#ffd586',
+          300: '#ffb946',
+          400: '#ff9a19',
+          500: '#ff7800',
+          600: '#cc5600',
+          700: '#a63b00',
+          800: '#872d05',
+          900: '#712608',
+        },
+        error: {
+          50: '#fff1f2',
+          100: '#ffe1e3',
+          200: '#ffc9cc',
+          300: '#ffa2a7',
+          400: '#fd6c75',
+          500: '#f53b47',
+          600: '#db1a27',
+          700: '#b81220',
+          800: '#981220',
+          900: '#7f1322',
+        },
+      },
+      fontFamily: {
+        'mono': ['Share Tech Mono', 'monospace'],
+        'sans': ['Rajdhani', 'sans-serif'],
+      },
+      animation: {
+        'vote-pulse': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'vote-fill': 'fill 2s ease-in-out forwards',
+      },
+      keyframes: {
+        fill: {
+          '0%': { width: '0%' },
+          '100%': { width: '100%' },
+        },
+      },
+    },
+  },
+  plugins: [],
+};
