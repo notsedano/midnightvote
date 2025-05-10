@@ -67,17 +67,74 @@ const LoginPage: React.FC = () => {
   // Add function to make specific email admin
   const makeSpecificUserAdmin = async () => {
     try {
-      const { error } = await supabase
+      setLoading(true);
+      setError(null);
+      
+      // First try to update by email
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({ is_admin: true })
         .eq('email', 'contact.strodano@gmail.com');
         
-      if (error) throw error;
-      
-      alert("Successfully made contact.strodano@gmail.com an admin. Please log in with that account and navigate to /admin");
-    } catch (err) {
+      if (updateError) {
+        console.warn('Update by email failed:', updateError.message);
+        
+        // Attempt to find the user first
+        const { data: userData, error: fetchError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', 'contact.strodano@gmail.com')
+          .single();
+          
+        if (fetchError) {
+          if (fetchError.code === 'PGRST116') {
+            // Profile doesn't exist, try to create it
+            // First get the user's auth ID if possible
+            const { data: authData } = await supabase
+              .from('auth.users')
+              .select('id')
+              .eq('email', 'contact.strodano@gmail.com')
+              .single();
+              
+            const userId = authData?.id || 'missing-id';
+            
+            // Create the profile with admin rights
+            const { error: insertError } = await supabase
+              .from('profiles')
+              .insert({
+                id: userId,
+                email: 'contact.strodano@gmail.com',
+                is_admin: true,
+                created_at: new Date().toISOString()
+              });
+              
+            if (insertError) {
+              throw new Error(`Failed to create profile: ${insertError.message}`);
+            }
+            
+            alert("Successfully created admin profile for contact.strodano@gmail.com. Please log in with that account.");
+          } else {
+            throw fetchError;
+          }
+        } else {
+          // Found the user, now update by ID
+          const { error: updateByIdError } = await supabase
+            .from('profiles')
+            .update({ is_admin: true })
+            .eq('id', userData.id);
+            
+          if (updateByIdError) throw updateByIdError;
+          
+          alert("Successfully made contact.strodano@gmail.com an admin. Please log in with that account and navigate to /admin");
+        }
+      } else {
+        alert("Successfully made contact.strodano@gmail.com an admin. Please log in with that account and navigate to /admin");
+      }
+    } catch (err: any) {
       console.error('Error making specific user admin:', err);
-      setError('Failed to update admin status. Check console for details.');
+      setError('Failed to update admin status: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -205,6 +262,14 @@ const LoginPage: React.FC = () => {
               <p className="text-xs text-gray-500 mt-2">
                 After becoming admin, try signing out and back in, then go to /admin
               </p>
+              <div className="mt-4 pt-2 border-t border-dark-700">
+                <Link 
+                  to="/debug" 
+                  className="text-sm text-primary-400 hover:underline flex items-center justify-center"
+                >
+                  <span className="mr-1">🔧</span> Access Debug Page
+                </Link>
+              </div>
             </div>
           )}
         </div>

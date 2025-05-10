@@ -6,50 +6,91 @@ import {
   BarChart3, 
   User, 
   Database, 
-  ShieldCheck
+  ShieldCheck,
+  Terminal
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const Navigation: React.FC = () => {
   const location = useLocation();
   const { isAdmin } = useAuth();
   
   const isActive = (path: string) => {
-    return location.pathname === path ? 'text-primary-400' : 'text-gray-400 hover:text-white';
+    return location.pathname === path;
   };
+  
+  const navItems = [
+    { path: '/vote', label: 'VOTE', icon: Vote },
+    { path: '/results', label: 'RESULTS', icon: BarChart3 },
+    ...(isAdmin ? [{ path: '/admin', label: 'ADMIN', icon: ShieldCheck }] : []),
+    { path: '/explorer', label: 'EXPLORER', icon: Database },
+    { path: '/profile', label: 'PROFILE', icon: User },
+  ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-dark-900 border-t border-dark-700 px-4 py-2 z-50">
+    <motion.nav 
+      className="fixed bottom-0 left-0 right-0 bg-black border-t border-[#9ACD32] px-2 py-1 z-50 font-mono"
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.5 }}
+    >
       <div className="container mx-auto">
-        <div className="flex justify-around items-center">
-          <Link to="/vote" className={`flex flex-col items-center ${isActive('/vote')}`}>
-            <Vote size={20} />
-            <span className="text-xs mt-1 font-mono">VOTE</span>
-          </Link>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center text-xs text-[#9ACD32]/70 px-2">
+            <Terminal size={12} className="mr-1" />
+            <span>MENU</span>
+          </div>
           
-          <Link to="/results" className={`flex flex-col items-center ${isActive('/results')}`}>
-            <BarChart3 size={20} />
-            <span className="text-xs mt-1 font-mono">RESULTS</span>
-          </Link>
+          <div className="flex space-x-1 md:space-x-4">
+            {navItems.map((item) => (
+              <NavItem 
+                key={item.path}
+                path={item.path}
+                label={item.label}
+                Icon={item.icon}
+                isActive={isActive(item.path)}
+              />
+            ))}
+          </div>
           
-          {isAdmin && (
-            <Link to="/admin" className={`flex flex-col items-center ${isActive('/admin')}`}>
-              <ShieldCheck size={20} />
-              <span className="text-xs mt-1 font-mono">ADMIN</span>
-            </Link>
-          )}
-          
-          <Link to="/explorer" className={`flex flex-col items-center ${isActive('/explorer')}`}>
-            <Database size={20} />
-            <span className="text-xs mt-1 font-mono">EXPLORER</span>
-          </Link>
-          
-          <Link to="/profile" className={`flex flex-col items-center ${isActive('/profile')}`}>
-            <User size={20} />
-            <span className="text-xs mt-1 font-mono">PROFILE</span>
-          </Link>
+          <div className="text-xs text-[#9ACD32]/70 px-2">
+            <motion.span
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              READY
+            </motion.span>
+          </div>
         </div>
       </div>
-    </nav>
+    </motion.nav>
+  );
+};
+
+interface NavItemProps {
+  path: string;
+  label: string;
+  Icon: React.ElementType;
+  isActive: boolean;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ path, label, Icon, isActive }) => {
+  return (
+    <Link 
+      to={path} 
+      className={`flex items-center px-2 py-1 border ${isActive ? 'border-[#9ACD32] text-[#9ACD32]' : 'border-[#9ACD32]/30 text-[#9ACD32]/70 hover:border-[#9ACD32]/60'}`}
+    >
+      <Icon size={14} className="mr-1" />
+      <span className="text-xs">{label}</span>
+      
+      {isActive && (
+        <motion.div 
+          className="ml-1 w-1 h-1 bg-[#9ACD32]"
+          layoutId="nav-indicator"
+          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        />
+      )}
+    </Link>
   );
 };
 

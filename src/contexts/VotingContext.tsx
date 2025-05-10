@@ -30,8 +30,10 @@ type VotingContextType = {
   fetchCandidates: () => Promise<void>;
   fetchVotes: () => Promise<void>;
   castVote: (candidateId: number) => Promise<{ success: boolean; error?: string }>;
+  cancelVote: () => Promise<{ success: boolean; error?: string }>;
   voteCounts: Record<number, number>;
   totalVotes: number;
+  lastVoteCancelled: number | null;
 };
 
 const VotingContext = createContext<VotingContextType>({
@@ -43,8 +45,10 @@ const VotingContext = createContext<VotingContextType>({
   fetchCandidates: async () => {},
   fetchVotes: async () => {},
   castVote: async () => ({ success: false }),
+  cancelVote: async () => ({ success: false }),
   voteCounts: {},
   totalVotes: 0,
+  lastVoteCancelled: null,
 });
 
 export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -55,6 +59,8 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [error, setError] = useState<string | null>(null);
   const [voteCounts, setVoteCounts] = useState<Record<number, number>>({});
   const [totalVotes, setTotalVotes] = useState<number>(0);
+  const [lastVoteCancelled, setLastVoteCancelled] = useState<number | null>(null);
+  const [voteCooldown, setVoteCooldown] = useState<boolean>(false);
 
   const { user } = useAuth();
 
@@ -306,6 +312,97 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  // Add cancelVote function
+  const cancelVote = async () => {
+    if (!user) {
+      const errorMsg = 'You must be logged in to cancel a vote';
+      logger.warn(errorMsg, { component: 'VotingContext' });
+      return { success: false, error: errorMsg };
+    }
+
+    if (!userVote) {
+      const errorMsg = 'You have not voted yet';
+      logger.warn(errorMsg, { component: 'VotingContext' });
+      return { success: false, error: errorMsg };
+    }
+
+    if (voteCooldown) {
+      const errorMsg = 'Please wait 5 minutes before voting again';
+      logger.warn(errorMsg, { component: 'VotingContext' });
+      return { success: false, error: errorMsg };
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      logger.info('Cancelling vote', { 
+        component: 'VotingContext',
+        data: { userId: user.id, voteId: userVote.id, candidateId: userVote.candidate_id }
+      });
+
+      // Store the candidate ID before deleting the vote
+      const cancelledCandidateId = userVote.candidate_id;
+      
+      // Delete the vote
+      const { error: deleteError } = await supabase
+        .from('votes')
+        .delete()
+        .eq('id', userVote.id);
+        
+      if (deleteError) {
+        logger.error('Error deleting vote', { 
+          component: 'VotingContext',
+          data: deleteError
+        });
+        throw deleteError;
+      }
+      
+      // Update profile has_voted status
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ has_voted: false })
+        .eq('id', user.id);
+        
+      if (profileError) {
+        logger.error('Error updating profile after vote cancellation', { 
+          component: 'VotingContext',
+          data: profileError
+        });
+        console.error('Error updating profile has_voted status:', profileError);
+      }
+      
+      // Set cooldown
+      setVoteCooldown(true);
+      setLastVoteCancelled(cancelledCandidateId);
+      
+      // Reset cooldown after 5 minutes
+      setTimeout(() => {
+        setVoteCooldown(false);
+      }, 5 * 60 * 1000); // 5 minutes in milliseconds
+      
+      // Refresh votes to get the latest state
+      await fetchVotes();
+      
+      logger.info('Vote cancelled successfully', { 
+        component: 'VotingContext',
+        data: { userId: user.id, voteId: userVote.id }
+      });
+      
+      return { success: true };
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to cancel vote';
+      setError(errorMessage);
+      logger.error('Error cancelling vote', { 
+        component: 'VotingContext', 
+        data: { error: err, userId: user?.id, voteId: userVote?.id } 
+      });
+      return { success: false, error: errorMessage };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <VotingContext.Provider value={{
       candidates,
@@ -316,8 +413,10 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       fetchCandidates,
       fetchVotes,
       castVote,
+      cancelVote,
       voteCounts,
       totalVotes,
+      lastVoteCancelled,
     }}>
       {children}
     </VotingContext.Provider>

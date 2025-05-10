@@ -1,36 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useVoting } from '../contexts/VotingContext';
 import { useAuth } from '../contexts/AuthContext';
 import Navigation from '../components/Navigation';
 import Banner from '../components/Banner';
-import VoteChart from '../components/VoteChart';
-import CandidateForm from '../components/CandidateForm';
 import LoadingScreen from '../components/LoadingScreen';
-import SimpleCandidateForm from '../components/SimpleCandidateForm';
+import { Trash2, RefreshCw, PlusCircle, BarChart2, Users, Award, Terminal } from 'lucide-react';
+import VoteChart from '../components/VoteChart';
 import { supabase } from '../lib/supabase';
-import { PlusCircle, RefreshCw, Pencil, Trash2 } from 'lucide-react';
 
 const AdminPage: React.FC = () => {
-  const { candidates, voteCounts, totalVotes, isLoading, fetchCandidates } = useVoting();
-  const { user } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const { candidates, fetchCandidates, isLoading, voteCounts } = useVoting();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showAddCandidate, setShowAddCandidate] = useState(false);
+  const [newCandidateName, setNewCandidateName] = useState('');
+  const [voterCount, setVoterCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingCandidate, setEditingCandidate] = useState<any>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [deleting, setDeleting] = useState<number | null>(null);
-  const [voterCount, setVoterCount] = useState<number>(0);
-  const [showSimpleForm, setShowSimpleForm] = useState(false);
-  
-  // Fetch voter count on mount
-  React.useEffect(() => {
+  // Get voter count
+  useEffect(() => {
     const fetchVoterCount = async () => {
-      const { count, error } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('has_voted', true);
-      
-      if (!error && count !== null) {
-        setVoterCount(count);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('has_voted', true);
+          
+        if (error) throw error;
+        if (data) setVoterCount(data.length);
+      } catch (error) {
+        console.error('Error fetching voter count:', error);
       }
     };
     
@@ -38,28 +37,14 @@ const AdminPage: React.FC = () => {
   }, []);
   
   const handleRefresh = async () => {
-    setRefreshing(true);
+    setIsRefreshing(true);
     await fetchCandidates();
-    
-    // Update voter count
-    const { count } = await supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .eq('has_voted', true);
-    
-    if (count !== null) {
-      setVoterCount(count);
-    }
-    
-    setTimeout(() => setRefreshing(false), 500);
+    setTimeout(() => setIsRefreshing(false), 1000);
   };
   
   const handleDeleteCandidate = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this candidate? This action cannot be undone.')) {
-      return;
-    }
-    
-    setDeleting(id);
+    const confirmed = window.confirm('Are you sure you want to delete this candidate?');
+    if (!confirmed) return;
     
     try {
       const { error } = await supabase
@@ -68,143 +53,178 @@ const AdminPage: React.FC = () => {
         .eq('id', id);
         
       if (error) throw error;
-      
-      await fetchCandidates();
-    } catch (err) {
-      console.error('Error deleting candidate:', err);
-      alert('Failed to delete candidate. Please try again.');
-    } finally {
-      setDeleting(null);
+      fetchCandidates();
+    } catch (error) {
+      console.error('Error deleting candidate:', error);
+      setError('Failed to delete candidate');
+    }
+  };
+  
+  const handleAddCandidate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCandidateName.trim()) return;
+    
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .insert([{ name: newCandidateName }]);
+        
+      if (error) throw error;
+      setNewCandidateName('');
+      setShowAddCandidate(false);
+      fetchCandidates();
+    } catch (error) {
+      console.error('Error adding candidate:', error);
+      setError('Failed to add candidate');
     }
   };
   
   if (isLoading) {
     return <LoadingScreen />;
   }
+  
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-dark-950 text-white flex flex-col items-center justify-center p-4">
+        <Terminal size={48} className="text-[#9ACD32] mb-4" />
+        <div className="font-mono text-[#9ACD32] text-xl mb-2">ACCESS DENIED</div>
+        <p className="text-gray-400 max-w-md text-center font-mono">
+          Unauthorized access attempt logged. This incident will be reported.
+        </p>
+      </div>
+    );
+  }
+
+  // Calculate total votes
+  const totalVotes = Object.values(voteCounts).reduce((sum, count) => sum + count, 0);
 
   return (
-    <div className="min-h-screen bg-dark-950 pb-20">
+    <div className="min-h-screen bg-black font-mono pb-20">
       <Banner 
-        imageUrl="https://images.pexels.com/photos/4709285/pexels-photo-4709285.jpeg?auto=compress&cs=tinysrgb&w=800"
-        title="Admin Dashboard"
+        title="ADMIN CONTROL PANEL" 
+        subtitle="SYSTEM MANAGEMENT INTERFACE"
       />
       
-      <div className="container mx-auto px-4">
-        <div className="flex justify-end mb-6">
-          <button 
-            onClick={handleRefresh}
-            className="flex items-center space-x-1 bg-dark-800 hover:bg-dark-700 py-2 px-3 rounded-md text-sm mr-2"
-            disabled={refreshing}
-          >
-            <RefreshCw size={16} className={`text-primary-400 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>Refresh Data</span>
-          </button>
-        </div>
-        
-        {/* Stats cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-          <div className="card bg-dark-800">
-            <p className="text-sm text-gray-400 mb-1">Total Candidates</p>
-            <p className="text-2xl font-mono text-primary-400">{candidates.length}</p>
-          </div>
-          
-          <div className="card bg-dark-800">
-            <p className="text-sm text-gray-400 mb-1">Total Voters</p>
-            <p className="text-2xl font-mono text-primary-400">{voterCount}</p>
-          </div>
-          
-          <div className="card bg-dark-800">
-            <p className="text-sm text-gray-400 mb-1">Total Votes</p>
-            <p className="text-2xl font-mono text-primary-400">{totalVotes}</p>
-          </div>
-        </div>
-        
-        {/* Vote Chart */}
-        <div className="card mb-6">
-          <h2 className="text-lg font-mono text-primary-400 mb-4">Vote Distribution</h2>
-          <VoteChart candidates={candidates} voteCounts={voteCounts} />
-        </div>
-        
-        {/* Simple Form Toggle */}
-        <div className="mb-6">
-          <button
-            onClick={() => setShowSimpleForm(!showSimpleForm)}
-            className="text-primary-400 hover:text-primary-300 text-sm underline"
-          >
-            {showSimpleForm ? 'Hide' : 'Show'} Simple Add Form
-          </button>
-          
-          {showSimpleForm && (
-            <div className="mt-4">
-              <SimpleCandidateForm />
-            </div>
-          )}
-        </div>
-        
-        {/* Candidate Management */}
-        <div className="card">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-mono text-primary-400">Candidate List</h2>
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="btn btn-primary flex items-center space-x-1"
+      <div className="container mx-auto px-4 py-2">
+        {error && (
+          <div className="mb-4 p-3 bg-red-900/30 border border-red-500 text-red-300 rounded-md flex items-center">
+            <span className="mr-2">ERROR:</span> {error}
+            <button 
+              className="ml-auto text-red-300 hover:text-red-100"
+              onClick={() => setError(null)}
             >
-              <PlusCircle size={16} />
-              <span>Add Candidate</span>
+              ×
+            </button>
+          </div>
+        )}
+        
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400">CANDIDATES</span>
+              <Award size={18} className="text-[#9ACD32]" />
+            </div>
+            <div className="text-2xl text-[#9ACD32]">{candidates.length}</div>
+          </div>
+          
+          <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400">VOTERS</span>
+              <Users size={18} className="text-[#9ACD32]" />
+            </div>
+            <div className="text-2xl text-[#9ACD32]">{voterCount}</div>
+          </div>
+          
+          <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-400">TOTAL VOTES</span>
+              <BarChart2 size={18} className="text-[#9ACD32]" />
+            </div>
+            <div className="text-2xl text-[#9ACD32]">{totalVotes}</div>
+          </div>
+        </div>
+        
+        {/* Vote Distribution */}
+        <div className="mb-6 p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg text-[#9ACD32]">Vote Distribution</h2>
+            <button 
+              onClick={handleRefresh}
+              className="text-[#9ACD32] hover:text-white transition duration-200"
+              disabled={isRefreshing}
+            >
+              <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
             </button>
           </div>
           
-          {candidates.length > 0 ? (
-            <div className="space-y-3">
-              {candidates.map((candidate) => (
-                <div 
-                  key={candidate.id} 
-                  className="flex justify-between items-center p-3 bg-dark-900 rounded-md"
+          <div className="h-64">
+            <VoteChart candidates={candidates} voteCounts={voteCounts} />
+          </div>
+        </div>
+        
+        {/* Candidate Management */}
+        <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg text-[#9ACD32]">Candidate Management</h2>
+            <button 
+              onClick={() => setShowAddCandidate(!showAddCandidate)}
+              className="flex items-center text-sm bg-[#9ACD32]/10 border border-[#9ACD32]/50 text-[#9ACD32] px-3 py-1 rounded hover:bg-[#9ACD32]/20 transition duration-200"
+            >
+              <PlusCircle size={14} className="mr-1" />
+              {showAddCandidate ? 'Cancel' : 'Add DJ'}
+            </button>
+          </div>
+          
+          {showAddCandidate && (
+            <form onSubmit={handleAddCandidate} className="mb-4 p-3 bg-black border border-[#9ACD32]/30 rounded-md">
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  value={newCandidateName}
+                  onChange={(e) => setNewCandidateName(e.target.value)}
+                  placeholder="Enter DJ name"
+                  className="flex-1 bg-black border border-[#9ACD32]/50 text-white px-3 py-2 rounded-md focus:outline-none focus:border-[#9ACD32]"
+                />
+                <button 
+                  type="submit" 
+                  className="ml-2 bg-[#9ACD32]/10 border border-[#9ACD32]/50 text-[#9ACD32] px-4 py-2 rounded hover:bg-[#9ACD32]/20 transition duration-200"
+                  disabled={!newCandidateName.trim()}
                 >
-                  <div>
-                    <p className="font-mono text-primary-400">{candidate.name}</p>
-                    <p className="text-sm text-gray-400">{candidate.genre}</p>
-                  </div>
-                  
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => setEditingCandidate(candidate)}
-                      className="p-2 bg-dark-800 hover:bg-dark-700 rounded-md"
-                    >
-                      <Pencil size={16} className="text-primary-400" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteCandidate(candidate.id)}
-                      className="p-2 bg-dark-800 hover:bg-error-900 rounded-md"
-                      disabled={deleting === candidate.id}
-                    >
-                      <Trash2 size={16} className={`${deleting === candidate.id ? 'text-gray-600' : 'text-error-400'}`} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400">No candidates yet. Click "Add Candidate" to create one.</p>
+                  Add
+                </button>
+              </div>
+            </form>
           )}
+          
+          <div className="space-y-2">
+            {candidates.map((candidate) => (
+              <div 
+                key={candidate.id}
+                className="p-3 bg-black border border-[#9ACD32]/30 rounded-md flex justify-between items-center"
+              >
+                <div>
+                  <div className="text-white">{candidate.name}</div>
+                  <div className="text-xs text-gray-400">Votes: {voteCounts[candidate.id] || 0}</div>
+                </div>
+                <button 
+                  onClick={() => handleDeleteCandidate(candidate.id)}
+                  className="text-red-400 hover:text-red-300 transition duration-200"
+                  aria-label="Delete candidate"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            ))}
+            
+            {candidates.length === 0 && (
+              <div className="text-center py-6 text-gray-400">
+                No candidates found. Add a DJ to get started.
+              </div>
+            )}
+          </div>
         </div>
       </div>
-      
-      {/* Candidate Forms */}
-      {showAddForm && (
-        <CandidateForm 
-          onClose={() => setShowAddForm(false)} 
-          onSave={fetchCandidates} 
-        />
-      )}
-      
-      {editingCandidate && (
-        <CandidateForm 
-          candidate={editingCandidate}
-          onClose={() => setEditingCandidate(null)} 
-          onSave={fetchCandidates} 
-        />
-      )}
       
       <Navigation />
     </div>

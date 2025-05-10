@@ -56,15 +56,15 @@ function App() {
             
             {/* Debug route that bypasses admin check */}
             <Route path="/debug-admin" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <AdminPage />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/debug" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <DebugPage />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             
             <Route path="/emergency" element={

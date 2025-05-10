@@ -1,132 +1,153 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useVoting } from '../contexts/VotingContext';
+import { Navigate } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
-import { LogOut, User as UserIcon, Shield } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Terminal, LogOut, User, Award, Calendar } from 'lucide-react';
 
 const ProfilePage: React.FC = () => {
-  const { user, profile, signOut, isLoading: authLoading } = useAuth();
-  const { userVote, candidates, isLoading: votingLoading } = useVoting();
-  const [localLoading, setLocalLoading] = useState(true);
-  const navigate = useNavigate();
-  
-  // Add debug effect to log what's causing the loading state
+  const { user, signOut, isAdmin } = useAuth();
+  const { userVote, candidates, isLoading } = useVoting();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   useEffect(() => {
-    console.log("Debug Profile Page:", { 
-      user: !!user, 
-      profile: !!profile, 
-      authLoading, 
-      votingLoading 
-    });
+    // Debug effect to log loading state
+    console.log('Auth checking state:', isCheckingAuth);
+    console.log('User state:', user);
     
-    // Set local loading to false after a short timeout to prevent infinite loading
+    // Timeout to prevent infinite loading
     const timer = setTimeout(() => {
-      setLocalLoading(false);
+      setIsCheckingAuth(false);
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [user, profile, authLoading, votingLoading]);
-  
-  // Show loading only when explicitly loading data
-  if ((authLoading || votingLoading) && localLoading) {
+  }, [isCheckingAuth, user]);
+
+  if (isLoading || isCheckingAuth) {
     return <LoadingScreen />;
   }
-  
-  // If no user after loading is complete, redirect to login
-  if (!user && !authLoading) {
-    navigate('/login');
-    return null;
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
   }
-  
+
+  // Find the candidate the user voted for
   const votedCandidate = userVote 
     ? candidates.find(c => c.id === userVote.candidate_id) 
     : null;
-  
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
 
-  // Add admin navigation function
-  const goToAdmin = () => {
-    navigate('/debug-admin');
-  };
+  // Safely format email with optional chaining
+  const formattedEmail = user.email ? (user.email.substring(0, 16) + (user.email.length > 16 ? '...' : '')) : '';
 
   return (
-    <div className="min-h-screen bg-dark-950 pb-20">
-      <Banner
-        imageUrl="https://images.pexels.com/photos/1763075/pexels-photo-1763075.jpeg?auto=compress&cs=tinysrgb&w=800"
-        title="My Profile"
+    <div className="min-h-screen bg-black pb-20 font-mono">
+      <Banner 
+        title="USER PROFILE" 
+        subtitle="ACCOUNT STATUS AND VOTING RECORD"
       />
-      
-      <div className="container mx-auto px-4">
-        <div className="card mb-6">
-          <div className="flex items-center mb-6">
-            <div className="w-16 h-16 rounded-full bg-dark-700 flex items-center justify-center">
-              <UserIcon size={32} className="text-primary-400" />
+
+      <div className="container mx-auto px-4 py-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* User Info */}
+          <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg text-[#9ACD32]">User Information</h2>
+              <User size={18} className="text-[#9ACD32]" />
             </div>
-            <div className="ml-4">
-              <h2 className="text-xl font-mono text-primary-400">
-                {user?.email || 'Loading...'}
-              </h2>
-              <p className="text-sm text-gray-400">
-                {profile?.is_admin ? 'Administrator' : 'Verified Voter'}
-              </p>
+            
+            <div className="space-y-3">
+              <div className="p-3 bg-black border border-[#9ACD32]/20 rounded-md">
+                <p className="text-xs text-gray-400 mb-1">Email Address</p>
+                <p className="text-[#9ACD32] truncate">{formattedEmail}</p>
+              </div>
+              
+              <div className="p-3 bg-black border border-[#9ACD32]/20 rounded-md">
+                <p className="text-xs text-gray-400 mb-1">User ID</p>
+                <p className="text-[#9ACD32] text-sm truncate">{user.id}</p>
+              </div>
+              
+              <div className="p-3 bg-black border border-[#9ACD32]/20 rounded-md">
+                <p className="text-xs text-gray-400 mb-1">Account Type</p>
+                <p className="text-[#9ACD32]">{isAdmin ? 'ADMINISTRATOR' : 'STANDARD USER'}</p>
+              </div>
+              
+              <div className="p-3 bg-black border border-[#9ACD32]/20 rounded-md">
+                <p className="text-xs text-gray-400 mb-1">Last Login</p>
+                <p className="text-[#9ACD32]">
+                  {new Date().toLocaleDateString()} | {new Date().toLocaleTimeString()}
+                </p>
+              </div>
             </div>
           </div>
           
-          <div className="border-t border-dark-700 pt-4">
-            <h3 className="text-lg font-mono text-primary-400 mb-3">Your Vote</h3>
+          {/* Vote Info */}
+          <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg text-[#9ACD32]">Vote Status</h2>
+              <Award size={18} className="text-[#9ACD32]" />
+            </div>
             
-            {votedCandidate ? (
-              <div className="p-4 bg-dark-800 rounded-md">
-                <p className="text-sm text-gray-400">You voted for:</p>
-                <p className="text-lg font-mono text-primary-400">{votedCandidate.name}</p>
-                <p className="text-sm text-gray-400">{votedCandidate.genre}</p>
+            {userVote && votedCandidate ? (
+              <div className="space-y-3">
+                <div className="p-3 bg-black border border-[#9ACD32]/20 rounded-md">
+                  <p className="text-xs text-gray-400 mb-1">Voted For</p>
+                  <p className="text-lg text-[#9ACD32]">{votedCandidate.name}</p>
+                </div>
                 
-                <div className="mt-3 text-xs text-gray-500">
-                  <p>Vote ID: {userVote?.transaction_id}</p>
-                  <p>Date: {userVote?.created_at ? new Date(userVote.created_at).toLocaleString() : ''}</p>
+                <div className="p-3 bg-black border border-[#9ACD32]/20 rounded-md">
+                  <p className="text-xs text-gray-400 mb-1">Vote Timestamp</p>
+                  <div className="flex items-center space-x-2">
+                    <Calendar size={14} className="text-[#9ACD32]" />
+                    <p className="text-[#9ACD32]">
+                      {new Date(userVote.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="p-3 bg-black border border-[#9ACD32]/20 rounded-md">
+                  <p className="text-xs text-gray-400 mb-1">Transaction ID</p>
+                  <p className="text-[#9ACD32] text-sm overflow-x-auto">
+                    {userVote.transaction_id}
+                  </p>
                 </div>
               </div>
             ) : (
-              <div className="p-4 bg-dark-800 rounded-md">
-                <p className="text-gray-400">You haven't cast a vote yet.</p>
-                <button 
-                  onClick={() => navigate('/vote')}
-                  className="mt-2 text-sm text-primary-400 hover:text-primary-300"
-                >
-                  Go to Vote tab to participate
-                </button>
+              <div className="flex flex-col items-center justify-center p-6 h-40 text-center">
+                <Terminal size={32} className="text-[#9ACD32]/50 mb-3" />
+                <p className="text-[#9ACD32] mb-1">NO VOTE RECORDED</p>
+                <p className="text-gray-400 text-sm">
+                  You have not yet voted in this competition.
+                </p>
               </div>
             )}
           </div>
         </div>
         
-        <button
-          onClick={handleSignOut}
-          className="btn btn-outline w-full flex items-center justify-center space-x-2"
-        >
-          <LogOut size={16} />
-          <span>Sign Out</span>
-        </button>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 mb-8">
+          <button 
+            onClick={signOut}
+            className="flex-1 flex items-center justify-center py-3 bg-black border border-[#9ACD32]/50 text-[#9ACD32] rounded hover:bg-[#9ACD32]/10 transition duration-200"
+          >
+            <LogOut size={16} className="mr-2" />
+            SIGN OUT
+          </button>
+          
+          {isAdmin && (
+            <button 
+              onClick={() => window.location.href = '/admin'} 
+              className="flex-1 flex items-center justify-center py-3 bg-black border border-[#9ACD32]/50 text-[#9ACD32] rounded hover:bg-[#9ACD32]/10 transition duration-200"
+            >
+              <Terminal size={16} className="mr-2" />
+              ADMIN PANEL
+            </button>
+          )}
+        </div>
       </div>
       
       <Navigation />
-      
-      {/* Direct admin access button */}
-      <div className="fixed bottom-20 right-4 z-40">
-        <button
-          onClick={goToAdmin}
-          className="bg-primary-900 hover:bg-primary-800 text-white p-3 rounded-full shadow-lg"
-          aria-label="Admin Access"
-        >
-          <Shield size={24} />
-        </button>
-      </div>
     </div>
   );
 };

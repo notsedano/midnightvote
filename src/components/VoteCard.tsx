@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Music } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Terminal, Disc, XCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { logger } from '../lib/logger';
 
 interface VoteCardProps {
@@ -13,6 +13,7 @@ interface VoteCardProps {
   hasVoted: boolean;
   userVoted?: boolean;
   onVote?: (id: number) => void;
+  onCancelVote?: () => void;
 }
 
 const VoteCard: React.FC<VoteCardProps> = ({
@@ -25,14 +26,20 @@ const VoteCard: React.FC<VoteCardProps> = ({
   hasVoted,
   userVoted = false,
   onVote,
+  onCancelVote,
 }) => {
   const [isVoting, setIsVoting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [voteProgress, setVoteProgress] = useState(0);
+  const [cancelProgress, setCancelProgress] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showCancellation, setShowCancellation] = useState(false);
   const progressIntervalRef = useRef<number | null>(null);
   const voteTriggeredRef = useRef(false);
+  const cancelTriggeredRef = useRef(false);
   const touchStartTimeRef = useRef<number>(0);
   const minHoldTime = 1500; // 1.5 seconds minimum hold time for voting
+  const minCancelHoldTime = 3500; // 3.5 seconds minimum hold time for cancelling
   
   const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
   
@@ -45,6 +52,16 @@ const VoteCard: React.FC<VoteCardProps> = ({
       });
     }
   }, [isVoting, id, name]);
+
+  // Log cancellation interaction
+  useEffect(() => {
+    if (isCancelling) {
+      logger.debug(`Vote cancellation started for ${name}`, { 
+        component: 'VoteCard',
+        data: { candidateId: id } 
+      });
+    }
+  }, [isCancelling, id, name]);
   
   // Clean up intervals when unmounting
   useEffect(() => {
@@ -81,6 +98,32 @@ const VoteCard: React.FC<VoteCardProps> = ({
       }
     }, intervalTime);
   };
+
+  const startCancelProgress = () => {
+    // Cancel any existing interval
+    if (progressIntervalRef.current) {
+      window.clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    
+    setCancelProgress(0);
+    setIsCancelling(true);
+    cancelTriggeredRef.current = false;
+    
+    // Start progress interval - 100% over 3.5 seconds
+    let progress = 0;
+    const incrementAmount = 1; // 1% increment
+    const intervalTime = minCancelHoldTime / (100 / incrementAmount); // time between increments
+    
+    progressIntervalRef.current = window.setInterval(() => {
+      progress += incrementAmount;
+      setCancelProgress(Math.min(progress, 100));
+      
+      if (progress >= 100) {
+        completeCancellation();
+      }
+    }, intervalTime);
+  };
   
   const completeVoting = () => {
     if (progressIntervalRef.current) {
@@ -110,19 +153,50 @@ const VoteCard: React.FC<VoteCardProps> = ({
       setShowConfirmation(false);
     }, 3000);
   };
+
+  const completeCancellation = () => {
+    if (progressIntervalRef.current) {
+      window.clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+    
+    if (cancelTriggeredRef.current) return; // Prevent duplicate cancellations
+    
+    setIsCancelling(false);
+    setCancelProgress(100);
+    setShowCancellation(true);
+    cancelTriggeredRef.current = true;
+    
+    logger.info(`Vote cancellation completed for ${name}`, { 
+      component: 'VoteCard', 
+      data: { candidateId: id }
+    });
+    
+    // Call the cancel vote handler
+    if (onCancelVote) {
+      onCancelVote();
+    }
+    
+    // Hide cancellation after a delay
+    setTimeout(() => {
+      setShowCancellation(false);
+    }, 3000);
+  };
   
   const cancelVoting = () => {
     // Only cancel if voting hasn't completed yet
-    if (!voteTriggeredRef.current) {
+    if (!voteTriggeredRef.current && !cancelTriggeredRef.current) {
       if (progressIntervalRef.current) {
         window.clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
       }
       
       setIsVoting(false);
+      setIsCancelling(false);
       setVoteProgress(0);
+      setCancelProgress(0);
       
-      logger.debug(`Vote interaction canceled for ${name}`, { 
+      logger.debug(`Interaction canceled for ${name}`, { 
         component: 'VoteCard',
         data: { candidateId: id } 
       });
@@ -133,11 +207,17 @@ const VoteCard: React.FC<VoteCardProps> = ({
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault(); // Prevent default to avoid scrolling issues
     
-    if (hasVoted || !onVote || voteTriggeredRef.current) return;
-    
-    logger.debug('Touch start detected', { component: 'VoteCard' });
     touchStartTimeRef.current = Date.now();
-    startVotingProgress();
+    
+    if (!hasVoted && !onVote) return;
+    
+    if (userVoted && onCancelVote) {
+      logger.debug('Touch start detected for vote cancellation', { component: 'VoteCard' });
+      startCancelProgress();
+    } else if (!hasVoted && onVote && !voteTriggeredRef.current) {
+      logger.debug('Touch start detected for voting', { component: 'VoteCard' });
+      startVotingProgress();
+    }
   };
   
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -146,11 +226,14 @@ const VoteCard: React.FC<VoteCardProps> = ({
     // Calculate how long the user held
     const touchDuration = Date.now() - touchStartTimeRef.current;
     
-    if (touchDuration >= minHoldTime && !voteTriggeredRef.current) {
+    if (userVoted && touchDuration >= minCancelHoldTime && !cancelTriggeredRef.current) {
+      // Complete the vote cancellation if user held long enough
+      completeCancellation();
+    } else if (!hasVoted && touchDuration >= minHoldTime && !voteTriggeredRef.current) {
       // Complete the vote if user held long enough
       completeVoting();
     } else {
-      // Cancel vote if released too early
+      // Cancel action if released too early
       cancelVoting();
     }
   };
@@ -159,11 +242,17 @@ const VoteCard: React.FC<VoteCardProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent text selection
     
-    if (hasVoted || !onVote || voteTriggeredRef.current) return;
-    
-    logger.debug('Mouse down detected', { component: 'VoteCard' });
     touchStartTimeRef.current = Date.now();
-    startVotingProgress();
+    
+    if (!hasVoted && !onVote) return;
+    
+    if (userVoted && onCancelVote) {
+      logger.debug('Mouse down detected for vote cancellation', { component: 'VoteCard' });
+      startCancelProgress();
+    } else if (!hasVoted && onVote && !voteTriggeredRef.current) {
+      logger.debug('Mouse down detected for voting', { component: 'VoteCard' });
+      startVotingProgress();
+    }
   };
   
   const handleMouseUp = (e: React.MouseEvent) => {
@@ -172,135 +261,205 @@ const VoteCard: React.FC<VoteCardProps> = ({
     // Calculate how long the user held
     const clickDuration = Date.now() - touchStartTimeRef.current;
     
-    if (clickDuration >= minHoldTime && !voteTriggeredRef.current) {
+    if (userVoted && clickDuration >= minCancelHoldTime && !cancelTriggeredRef.current) {
+      // Complete the vote cancellation if user held long enough
+      completeCancellation();
+    } else if (!hasVoted && clickDuration >= minHoldTime && !voteTriggeredRef.current) {
       // Complete the vote if user held long enough
       completeVoting();
     } else {
-      // Cancel vote if released too early
+      // Cancel action if released too early
       cancelVoting();
     }
   };
 
   return (
     <motion.div 
-      className={`card relative ${hasVoted ? 'cursor-default' : 'cursor-pointer'} ${userVoted ? 'cyber-border' : ''}`}
+      className={`relative overflow-hidden cursor-pointer bg-black border ${userVoted ? 'border-[#9ACD32]' : 'border-[#9ACD32]/50'} p-4 font-mono`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      whileHover={!hasVoted ? { scale: 1.02 } : {}}
-      onMouseDown={!hasVoted ? handleMouseDown : undefined}
-      onMouseUp={!hasVoted ? handleMouseUp : undefined}
-      onMouseLeave={!hasVoted ? cancelVoting : undefined}
-      onTouchStart={!hasVoted ? handleTouchStart : undefined}
-      onTouchEnd={!hasVoted ? handleTouchEnd : undefined}
-      onTouchCancel={!hasVoted ? cancelVoting : undefined}
+      whileHover={{ scale: 1.02, y: -5 }}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={cancelVoting}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={cancelVoting}
     >
+      {/* Header */}
+      <div className="flex justify-between items-center mb-3 border-b border-[#9ACD32]/30 pb-2">
+        <div className="flex items-center space-x-2">
+          <Terminal size={14} className="text-[#9ACD32]" />
+          <span className="text-[#9ACD32] text-sm font-bold uppercase">DJ.{id}</span>
+        </div>
+        {hasVoted && <span className="text-xs text-[#9ACD32]/70">VOTES: {voteCount}</span>}
+      </div>
+      
       {/* Highlight overlay while voting */}
       {isVoting && (
         <motion.div 
-          className="absolute inset-0 bg-primary-500/10 rounded-lg pointer-events-none"
+          className="absolute inset-0 border-2 border-[#9ACD32] pointer-events-none"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+        />
+      )}
+
+      {/* Highlight overlay while cancelling */}
+      {isCancelling && (
+        <motion.div 
+          className="absolute inset-0 border-2 border-white pointer-events-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.2 }}
         />
       )}
       
-      {/* Image or Icon */}
-      <div className="w-full h-32 bg-dark-900 rounded-md mb-4 overflow-hidden">
-        {image ? (
-          <img 
-            src={image} 
-            alt={name} 
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Music size={48} className="text-primary-400" />
+      {/* Main Content */}
+      <div className="space-y-3">
+        {/* Name and Genre */}
+        <div>
+          <h3 className="text-lg text-[#9ACD32] mb-1">{name}</h3>
+          <div className="inline-block px-2 border border-[#9ACD32]/50 text-xs text-[#9ACD32]/80">
+            {genre.toUpperCase()}
           </div>
-        )}
+        </div>
+        
+        {/* DJ Image or Icon */}
+        <div className="flex justify-center items-center h-32 border border-[#9ACD32]/30 bg-black">
+          {image ? (
+            <img 
+              src={image} 
+              alt={name} 
+              className="h-full object-contain max-h-32 p-1 opacity-90"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Disc size={48} className="text-[#9ACD32]/50" />
+            </div>
+          )}
+        </div>
       </div>
       
-      {/* Content */}
-      <div className="mb-2">
-        <h3 className="text-xl font-mono text-primary-400">{name}</h3>
-        <p className="text-sm text-gray-400">{genre}</p>
-      </div>
-      
-      {/* Vote Count or Progress */}
+      {/* Vote Info */}
       {hasVoted ? (
-        <div className="mt-4">
-          <div className="flex justify-between mb-1">
-            <span className="text-xs text-gray-400">Votes: {voteCount}</span>
-            <span className="text-xs text-primary-400">{percentage.toFixed(1)}%</span>
+        <div className="mt-4 space-y-2">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-[#9ACD32]/70">VOTE PERCENTAGE</span>
+            <span className="text-[#9ACD32]">{percentage.toFixed(1)}%</span>
           </div>
-          <div className="voting-progress">
-            <div 
-              className="voting-progress-bar" 
-              style={{ width: `${percentage}%` }}
-            ></div>
+          <div className="h-1.5 bg-black border border-[#9ACD32]/30">
+            <motion.div 
+              className="h-full bg-[#9ACD32]" 
+              initial={{ width: '0%' }}
+              animate={{ width: `${percentage}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
           </div>
           {userVoted && (
-            <div className="mt-2 text-center">
-              <span className="inline-block px-2 py-1 bg-primary-400 text-dark-950 rounded text-xs font-mono">
-                You voted for this DJ
-              </span>
+            <div className="pt-2 border-t border-[#9ACD32]/30 mt-2">
+              <div className="text-center">
+                <span className="text-xs text-[#9ACD32]">
+                  VOTE STATUS: CONFIRMED
+                </span>
+              </div>
+              
+              {isCancelling && (
+                <div className="mt-3">
+                  <div className="flex justify-between mb-1 text-xs">
+                    <span className="text-white">CANCEL PROGRESS</span>
+                    <span className="text-white">{cancelProgress}%</span>
+                  </div>
+                  <div className="h-1.5 bg-black border border-white/30">
+                    <motion.div 
+                      className="h-full bg-white"
+                      style={{ 
+                        width: `${cancelProgress}%`,
+                        transition: 'width 0.1s linear' 
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       ) : (
-        <>
-          <div className="mt-4">
-            <div className="flex justify-between mb-1">
-              <span className="text-xs text-gray-400">
-                {isVoting ? 'Hold to vote' : 'Press and hold to vote'}
-              </span>
-              {isVoting && (
-                <span className="text-xs text-primary-400">{voteProgress}%</span>
-              )}
-            </div>
-            <div className="voting-progress">
-              <div 
-                className="voting-progress-bar" 
-                style={{ 
-                  width: `${isVoting ? voteProgress : 0}%`,
-                  transition: isVoting ? 'width 0.1s linear' : 'width 0.3s ease' 
-                }}
-              ></div>
-            </div>
+        <div className="mt-4 space-y-2 pt-2 border-t border-[#9ACD32]/30">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-[#9ACD32]/70">
+              {isVoting ? 'HOLD TO VOTE' : 'PRESS AND HOLD TO VOTE'}
+            </span>
+            {isVoting && (
+              <span className="text-[#9ACD32]">{voteProgress}%</span>
+            )}
           </div>
-        </>
+          <div className="h-1.5 bg-black border border-[#9ACD32]/30">
+            <motion.div 
+              className="h-full bg-[#9ACD32]" 
+              style={{ 
+                width: `${isVoting ? voteProgress : 0}%`,
+                transition: isVoting ? 'width 0.1s linear' : 'width 0.3s ease' 
+              }}
+            />
+          </div>
+        </div>
       )}
       
       {/* Vote Confirmation */}
-      {showConfirmation && (
-        <motion.div 
-          className="absolute inset-0 bg-dark-800/90 flex items-center justify-center rounded-lg"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto bg-primary-400 rounded-full flex items-center justify-center">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-10 w-10 text-dark-950" 
-                viewBox="0 0 20 20" 
-                fill="currentColor"
-              >
-                <path 
-                  fillRule="evenodd" 
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                  clipRule="evenodd" 
-                />
-              </svg>
+      <AnimatePresence>
+        {showConfirmation && (
+          <motion.div 
+            className="absolute inset-0 bg-black/90 flex items-center justify-center backdrop-blur-sm border-2 border-[#9ACD32]"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="text-center space-y-3">
+              <div className="inline-block px-4 py-2 border border-[#9ACD32] bg-black">
+                <span className="text-[#9ACD32] text-sm">VOTE CONFIRMED</span>
+              </div>
+              <p className="text-[#9ACD32]/70 text-xs">
+                You voted for {name.toUpperCase()}
+              </p>
+              <div className="pt-2">
+                <span className="text-xs text-[#9ACD32]/50 animate-pulse">
+                  // Transaction logged //
+                </span>
+              </div>
             </div>
-            <h3 className="mt-4 text-lg font-mono text-primary-400">Vote Recorded!</h3>
-            <p className="mt-2 text-sm text-gray-400">
-              Your vote for {name} has been registered
-            </p>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Vote Cancellation */}
+      <AnimatePresence>
+        {showCancellation && (
+          <motion.div 
+            className="absolute inset-0 bg-black/90 flex items-center justify-center backdrop-blur-sm border-2 border-white"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="text-center space-y-3">
+              <div className="inline-block px-4 py-2 border border-white bg-black">
+                <span className="text-white text-sm">VOTE CANCELLED</span>
+              </div>
+              <p className="text-white/70 text-xs">
+                Cooldown: 5 minutes
+              </p>
+              <div className="pt-2">
+                <span className="text-xs text-white/50 animate-pulse">
+                  // System reset in progress //
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

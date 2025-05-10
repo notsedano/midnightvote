@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import Navigation from '../components/Navigation';
 import { setDebugMode, isDebugModeEnabled } from '../lib/logger';
 import { logger } from '../lib/logger';
+import { useNavigate } from 'react-router-dom';
 
 const DebugPage: React.FC = () => {
   const { user, profile, isAdmin } = useAuth();
@@ -15,6 +16,18 @@ const DebugPage: React.FC = () => {
   const [addStatus, setAddStatus] = useState<string | null>(null);
   const [voteStatus, setVoteStatus] = useState<string | null>(null);
   const [dbLogs, setDbLogs] = useState<any[]>([]);
+  const navigate = useNavigate();
+  
+  // Redirect non-admin users
+  useEffect(() => {
+    if (user && !isAdmin) {
+      logger.warn('Non-admin user attempted to access debug page', { 
+        component: 'DebugPage',
+        data: { userId: user.id }
+      });
+      navigate('/vote');
+    }
+  }, [user, isAdmin, navigate]);
   
   // Toggle debug mode
   const toggleDebugMode = () => {
@@ -51,45 +64,6 @@ const DebugPage: React.FC = () => {
     }
   };
   
-  // Add admin privileges
-  const grantAdminPrivileges = async () => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: true })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      
-      alert('Admin access granted! Sign out and sign back in for changes to take effect.');
-    } catch (err: any) {
-      alert(`Error setting admin privileges: ${err.message}`);
-      logger.error('Failed to grant admin privileges', { component: 'DebugPage', data: err });
-    }
-  };
-  
-  // Test vote for a candidate
-  const testVote = async (candidateId: number) => {
-    setVoteStatus(`Attempting to vote for candidate ${candidateId}...`);
-    
-    try {
-      const result = await castVote(candidateId);
-      
-      if (result.success) {
-        setVoteStatus('Vote cast successfully!');
-      } else {
-        setVoteStatus(`Vote failed: ${result.error}`);
-      }
-      
-      setTimeout(() => setVoteStatus(null), 5000);
-    } catch (err: any) {
-      setVoteStatus(`Error: ${err.message}`);
-      logger.error('Test vote failed', { component: 'DebugPage', data: err });
-    }
-  };
-  
   // Reset user vote (for testing)
   const resetVote = async () => {
     if (!user) return;
@@ -121,6 +95,26 @@ const DebugPage: React.FC = () => {
     }
   };
   
+  // Test vote for a candidate
+  const testVote = async (candidateId: number) => {
+    setVoteStatus(`Attempting to vote for candidate ${candidateId}...`);
+    
+    try {
+      const result = await castVote(candidateId);
+      
+      if (result.success) {
+        setVoteStatus('Vote cast successfully!');
+      } else {
+        setVoteStatus(`Vote failed: ${result.error}`);
+      }
+      
+      setTimeout(() => setVoteStatus(null), 5000);
+    } catch (err: any) {
+      setVoteStatus(`Error: ${err.message}`);
+      logger.error('Test vote failed', { component: 'DebugPage', data: err });
+    }
+  };
+  
   // Fetch DB health logs
   const fetchDbLogs = async () => {
     try {
@@ -140,6 +134,11 @@ const DebugPage: React.FC = () => {
   useEffect(() => {
     fetchDbLogs();
   }, []);
+
+  // If not admin, don't render the page
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-dark-950 pb-20">
@@ -184,14 +183,6 @@ const DebugPage: React.FC = () => {
                   <span className={`font-mono ${isAdmin ? 'text-success-400' : 'text-error-400'}`}>
                     {isAdmin ? 'Yes' : 'No'}
                   </span>
-                  {!isAdmin && (
-                    <button 
-                      onClick={grantAdminPrivileges}
-                      className="ml-2 text-xs bg-dark-800 px-2 py-1 rounded hover:bg-dark-700"
-                    >
-                      Grant Admin
-                    </button>
-                  )}
                 </p>
               </div>
               

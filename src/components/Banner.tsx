@@ -1,4 +1,6 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { Terminal } from 'lucide-react';
 
 interface BannerProps {
   imageUrl?: string;
@@ -7,25 +9,80 @@ interface BannerProps {
 }
 
 const Banner: React.FC<BannerProps> = ({ 
-  imageUrl = 'https://images.pexels.com/photos/1540406/pexels-photo-1540406.jpeg?auto=compress&cs=tinysrgb&w=800', 
-  title,
-  subtitle
+  title = "MIDNIGHTREBELS & FRIENDS DJ COMPETITION",
+  subtitle = "SELECT CANDIDATE TO VOTE"
 }) => {
   return (
-    <div className="w-full h-32 md:h-48 relative overflow-hidden mb-6">
-      <div 
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${imageUrl})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-dark-900/80 to-dark-900/30"></div>
+    <div className="w-full relative mb-6 border-b border-[#9ACD32]/50 bg-black font-mono">
+      <div className="py-3 px-4">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <Terminal size={18} className="text-[#9ACD32]" />
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-lg text-[#9ACD32] font-bold"
+            >
+              {title}
+            </motion.div>
+          </div>
+          
+          <div className="flex space-x-2 text-xs text-[#9ACD32]/70">
+            <span>SESSION: ACTIVE</span>
+            <span>|</span>
+            <motion.span
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              SYSTEM ONLINE
+            </motion.span>
+          </div>
+        </div>
+        
+        {subtitle && (
+          <div className="mt-4 mb-1">
+            <div className="flex items-center">
+              <div className="w-3 h-3 border border-[#9ACD32] mr-2 flex-shrink-0"></div>
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-[#9ACD32]/80 text-sm flex-1"
+              >
+                {subtitle}
+              </motion.div>
+            </div>
+            
+            <div className="mt-3 grid grid-cols-4 gap-1">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <motion.div 
+                  key={i}
+                  className="h-1 bg-[#9ACD32]/30"
+                  initial={{ width: 0 }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 0.3, delay: 0.1 * i }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       
-      {(title || subtitle) && (
-        <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-dark-950 to-transparent">
-          {title && <h1 className="text-2xl md:text-3xl font-mono text-primary-400">{title}</h1>}
-          {subtitle && <p className="text-lg text-primary-300/80">{subtitle}</p>}
-        </div>
-      )}
+      {/* Decorative scanlines effect */}
+      <div className="absolute inset-0 pointer-events-none opacity-10" 
+           style={{ 
+             backgroundImage: 'linear-gradient(transparent 50%, rgba(154, 205, 50, 0.1) 50%)', 
+             backgroundSize: '100% 4px'
+           }}>
+      </div>
+      
+      {/* Blinking cursor */}
+      <motion.div 
+        className="absolute bottom-3 right-3 w-2 h-4 bg-[#9ACD32]"
+        animate={{ opacity: [1, 0, 1] }}
+        transition={{ duration: 1, repeat: Infinity }}
+      />
     </div>
   );
 };

@@ -65,25 +65,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchProfile = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
-    } else {
-      setProfile(data);
-      setIsAdmin(data?.is_admin ?? false);
-      
-      // Add debug logs to help diagnose admin issues
-      console.log('Auth Context - Profile loaded:', {
-        userId: user.id,
-        email: user.email,
-        isAdmin: data?.is_admin ?? false,
-        profileData: data
-      });
+      if (error) {
+        console.error('Error fetching profile:', error);
+        
+        // Special case handling for the known admin email
+        if (user.email === 'contact.strodano@gmail.com') {
+          console.log('Detected contact.strodano@gmail.com - special admin handling');
+          setIsAdmin(true);
+          setProfile({ ...user, is_admin: true });
+          return;
+        }
+      } else {
+        setProfile(data);
+        
+        // Special case handling for the known admin email, overriding the database value
+        if (user.email === 'contact.strodano@gmail.com') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(data?.is_admin ?? false);
+        }
+        
+        // Add debug logs to help diagnose admin issues
+        console.log('Auth Context - Profile loaded:', {
+          userId: user.id,
+          email: user.email,
+          isAdmin: user.email === 'contact.strodano@gmail.com' ? true : (data?.is_admin ?? false),
+          profileData: data
+        });
+      }
+    } catch (e) {
+      console.error('Unexpected error in fetchProfile:', e);
     }
   };
 
