@@ -288,6 +288,8 @@ const VoteCard: React.FC<VoteCardProps> = ({
   
   const handleVideoThumbnailClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering vote action
+    // Cancel any ongoing voting or cancelling actions
+    cancelVoting();
     if (youtube_url && thumbnailUrl) {
       setShowVideoModal(true);
     }
@@ -295,6 +297,12 @@ const VoteCard: React.FC<VoteCardProps> = ({
   
   // Handle touch events (for mobile)
   const handleTouchStart = (e: React.TouchEvent) => {
+    // Check if touch is on the video thumbnail
+    if ((e.target as HTMLElement).closest('.video-thumbnail')) {
+      // Don't prevent default for video thumbnail to allow click/tap
+      return;
+    }
+    
     e.preventDefault(); // Prevent default to avoid scrolling issues
     
     touchStartTimeRef.current = Date.now();
@@ -311,21 +319,21 @@ const VoteCard: React.FC<VoteCardProps> = ({
   };
   
   const handleTouchEnd = (e: React.TouchEvent) => {
+    // Check if touch is on the video thumbnail
+    if ((e.target as HTMLElement).closest('.video-thumbnail')) {
+      // On touch end for video thumbnail
+      const touchDuration = Date.now() - touchStartTimeRef.current;
+      // Only open video modal if it was a short touch (tap)
+      if (touchDuration < touchThreshold && thumbnailUrl) {
+        setShowVideoModal(true);
+      }
+      return;
+    }
+    
     e.preventDefault();
     
     // Calculate how long the user held
     const touchDuration = Date.now() - touchStartTimeRef.current;
-    
-    // Check if it was a tap (short duration) on video thumbnail
-    if (thumbnailUrl && touchDuration < touchThreshold) {
-      // Get the target element
-      const target = e.target as HTMLElement;
-      // Check if the tap was on the video thumbnail container
-      if (target.closest('.video-thumbnail')) {
-        setShowVideoModal(true);
-        return;
-      }
-    }
     
     if (userVoted && touchDuration >= minCancelHoldTime && !cancelTriggeredRef.current) {
       // Complete the vote cancellation if user held long enough
@@ -341,10 +349,12 @@ const VoteCard: React.FC<VoteCardProps> = ({
   
   // Handle mouse events (for desktop)
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Don't prevent default if clicking on the video thumbnail
-    if (!(e.target as HTMLElement).closest('.video-thumbnail')) {
-      e.preventDefault(); // Prevent text selection
+    // Don't process if clicking on the video thumbnail
+    if ((e.target as HTMLElement).closest('.video-thumbnail')) {
+      return;
     }
+    
+    e.preventDefault(); // Prevent text selection
     
     touchStartTimeRef.current = Date.now();
     
@@ -360,10 +370,12 @@ const VoteCard: React.FC<VoteCardProps> = ({
   };
   
   const handleMouseUp = (e: React.MouseEvent) => {
-    // Don't prevent default if clicking on the video thumbnail
-    if (!(e.target as HTMLElement).closest('.video-thumbnail')) {
-      e.preventDefault();
+    // Don't process if clicking on the video thumbnail
+    if ((e.target as HTMLElement).closest('.video-thumbnail')) {
+      return;
     }
+    
+    e.preventDefault();
     
     // Calculate how long the user held
     const clickDuration = Date.now() - touchStartTimeRef.current;
@@ -416,6 +428,8 @@ const VoteCard: React.FC<VoteCardProps> = ({
         <div 
           className="video-thumbnail w-full h-48 bg-black border border-[#9ACD32]/30 flex items-center justify-center mb-4 relative overflow-hidden"
           onClick={youtube_url ? handleVideoThumbnailClick : undefined}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
         >
           {thumbnailUrl ? (
             <div className="w-full h-full relative cursor-pointer group">

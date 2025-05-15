@@ -12,6 +12,14 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
 
+/**
+ * Vote Page Component
+ * 
+ * This page displays the DJ candidates and allows users to vote.
+ * Note: The YouTube thumbnails can be clicked to watch videos, 
+ * while the DJ cards can be pressed and held to cast votes.
+ * These interactions are isolated to prevent conflicts.
+ */
 const VotePage: React.FC = () => {
   const { candidates, voteCounts, totalVotes, userVote, isLoading, castVote, cancelVote, error: votingError, lastVoteCancelled } = useVoting();
   const { user } = useAuth();
@@ -173,7 +181,7 @@ const VotePage: React.FC = () => {
     <Layout>
       <Banner 
         title="MIDNIGHTREBELS &FRIENDS"
-        subtitle="DJ COMPETITION, OKADA - MANILA"
+        subtitle="DJ COMPETITION - HOLD TO VOTE, TAP VIDEOS TO WATCH"
       />
       
       <div className="container mx-auto px-4 py-4 relative mb-20">
@@ -212,7 +220,8 @@ const VotePage: React.FC = () => {
               <p className="mb-2">1. <strong>PRESS AND HOLD</strong> on a DJ card for 1.5 seconds to cast your vote.</p>
               <p className="mb-2">2. You can vote for <strong>ONLY ONE DJ</strong> in the competition.</p>
               <p className="mb-2">3. To change your vote, <strong>HOLD</strong> your voted DJ card for 3.5 seconds or use the cancel button.</p>
-              <p>4. After cancelling, you can immediately vote for another DJ.</p>
+              <p className="mb-2">4. After cancelling, you can immediately vote for another DJ.</p>
+              <p>5. <strong>TAP</strong> on a YouTube thumbnail to watch the DJ's performance video.</p>
             </motion.div>
           )}
           
