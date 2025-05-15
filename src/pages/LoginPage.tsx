@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Terminal } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getBannerUrl } from '../lib/bannerService';
 import Footer from '../components/Footer';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -30,96 +31,11 @@ const LoginPage: React.FC = () => {
 
   // Fetch banner images on load
   useEffect(() => {
-    const fetchBannerImages = async () => {
-      try {
-        console.log("=== BANNER DEBUG: Fetching banner images for login page ===");
-        
-        // Try to fetch from database first - most reliable source across devices
-        try {
-          console.log("BANNER DEBUG: Attempting to fetch banner images from database");
-          const { data, error } = await supabase
-            .from('site_settings')
-            .select('key, value')
-            .in('key', ['login_banner1', 'login_banner2'])
-            .order('key');
-            
-          console.log("BANNER DEBUG: Raw database response:", { data, error });
-            
-          if (error) {
-            console.error('BANNER DEBUG: Error fetching banner images from database:', error);
-            throw error;
-          }
-          
-          if (data && data.length > 0) {
-            console.log("BANNER DEBUG: Banner data retrieved from database:", data);
-            const images = {
-              banner1: '',
-              banner2: ''
-            };
-            
-            data.forEach(item => {
-              console.log(`BANNER DEBUG: Processing database item: ${item.key} = ${item.value?.substring(0, 30)}...`);
-              
-              if (item.key === 'login_banner1') {
-                images.banner1 = item.value;
-                // Also save to localStorage for future use
-                if (item.value) {
-                  localStorage.setItem('login_banner1', item.value);
-                  console.log("BANNER DEBUG: Saved banner1 to localStorage");
-                }
-              } else if (item.key === 'login_banner2') {
-                images.banner2 = item.value;
-                // Also save to localStorage for future use
-                if (item.value) {
-                  localStorage.setItem('login_banner2', item.value);
-                  console.log("BANNER DEBUG: Saved banner2 to localStorage");
-                }
-              }
-            });
-            
-            console.log("BANNER DEBUG: Setting banner images state:", images);
-            setBannerImages(images);
-            return; // Exit early as we got data from the database
-          } else {
-            console.log("BANNER DEBUG: No banner data found in database");
-          }
-        } catch (dbError) {
-          console.error('BANNER DEBUG: Database fetch failed, falling back to localStorage:', dbError);
-        }
-        
-        // Fall back to localStorage if database fetch failed or returned no data
-        const localBanner1 = localStorage.getItem('login_banner1');
-        const localBanner2 = localStorage.getItem('login_banner2');
-        
-        console.log("BANNER DEBUG: LocalStorage values:", { 
-          localBanner1: localBanner1 ? `${localBanner1.substring(0, 30)}...` : null,
-          localBanner2: localBanner2 ? `${localBanner2.substring(0, 30)}...` : null
-        });
-        
-        if (localBanner1 || localBanner2) {
-          console.log("BANNER DEBUG: Using banner images from localStorage");
-          // Use localStorage values if available
-          setBannerImages({
-            banner1: localBanner1 || '',
-            banner2: localBanner2 || ''
-          });
-        } else {
-          console.log("BANNER DEBUG: No banner images found in localStorage or database");
-        }
-      } catch (error) {
-        console.error('BANNER DEBUG: Error in banner image fetch process:', error);
-      }
-    };
-    
-    fetchBannerImages();
-    
-    // Add a secondary fetch after a delay to handle slow database connections
-    const timeoutId = setTimeout(() => {
-      console.log("BANNER DEBUG: Running delayed banner fetch");
-      fetchBannerImages();
-    }, 3000);
-    
-    return () => clearTimeout(timeoutId);
+    // Get banner images from our banner service
+    setBannerImages({
+      banner1: getBannerUrl('login1'),
+      banner2: getBannerUrl('login2')
+    });
   }, []);
 
   // Fetch user's IP address
@@ -251,27 +167,11 @@ const LoginPage: React.FC = () => {
         {/* Left Column: Banner Image */}
         <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
           <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
-            {/* Debug banner1 value */}
-            {(() => { console.log("BANNER DEBUG RENDER: banner1 value:", bannerImages.banner1); return null; })()}
             {bannerImages.banner1 ? (
               <img 
                 src={bannerImages.banner1} 
                 alt="Left banner" 
                 className="w-full h-full object-cover"
-                onLoad={() => console.log("BANNER DEBUG: Banner 1 image loaded successfully")}
-                onError={(e) => {
-                  console.error("BANNER DEBUG: Error loading banner 1 image:", e);
-                  // Show error message on the image
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const parent = target.parentElement;
-                  if (parent) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = "w-full h-full flex items-center justify-center text-red-500 text-sm p-4 text-center";
-                    errorDiv.innerHTML = `Error loading image:<br/>${bannerImages.banner1.substring(0, 50)}...`;
-                    parent.appendChild(errorDiv);
-                  }
-                }}
               />
             ) : (
               <div className="w-full h-full bg-black flex flex-col font-mono">
@@ -389,27 +289,11 @@ const LoginPage: React.FC = () => {
         {/* Right Column: Banner */}
         <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
           <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
-            {/* Debug banner2 value */}
-            {(() => { console.log("BANNER DEBUG RENDER: banner2 value:", bannerImages.banner2); return null; })()}
             {bannerImages.banner2 ? (
               <img 
                 src={bannerImages.banner2} 
                 alt="Right banner" 
                 className="w-full h-full object-cover"
-                onLoad={() => console.log("BANNER DEBUG: Banner 2 image loaded successfully")}
-                onError={(e) => {
-                  console.error("BANNER DEBUG: Error loading banner 2 image:", e);
-                  // Show error message on the image
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const parent = target.parentElement;
-                  if (parent) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = "w-full h-full flex items-center justify-center text-red-500 text-sm p-4 text-center";
-                    errorDiv.innerHTML = `Error loading image:<br/>${bannerImages.banner2.substring(0, 50)}...`;
-                    parent.appendChild(errorDiv);
-                  }
-                }}
               />
             ) : (
               <div className="w-full h-48 md:h-full bg-[#9ACD32] flex items-center justify-center text-black font-mono relative">

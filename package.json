@@ -7,10 +7,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "fix-banners": "node deploy-banner-fix.js",
-    "create-bucket": "node create-banners-bucket.js",
-    "test-banners": "node test-banner-functions.js"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@metamask/logo": "^4.0.0",

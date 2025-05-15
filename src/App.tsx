@@ -14,6 +14,7 @@ import AdminRoute from './components/AdminRoute';
 import DebugPage from './pages/DebugPage';
 import EmergencyPage from './pages/EmergencyPage';
 import TestBucket from './pages/TestBucket';
+import TestBannerPage from './pages/TestBannerPage';
 
 function App() {
   return (
@@ -75,6 +76,7 @@ function App() {
             } />
             
             <Route path="/test-bucket" element={<TestBucket />} />
+            <Route path="/test-banner" element={<TestBannerPage />} />
             
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/login" />} />

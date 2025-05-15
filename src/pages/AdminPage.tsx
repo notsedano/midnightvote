@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase';
 import IpTrackingPanel from '../components/IpTrackingPanel';
 import Footer from '../components/Footer';
 import { uploadImage, updateSiteSetting } from '../utils/storage';
+import BannerManager from '../components/BannerManager';
 
 const AdminPage: React.FC = () => {
   const { isAdmin, user } = useAuth();
@@ -438,6 +439,14 @@ const AdminPage: React.FC = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-lg text-[#9ACD32]">Banner Management</h2>
           </div>
+          
+          {/* New External Banner Management Section */}
+          <div className="mb-8">
+            <h3 className="text-[#9ACD32] mb-4 text-sm uppercase tracking-wider">External Banner URL Manager</h3>
+            <BannerManager />
+          </div>
+          
+          <h3 className="text-[#9ACD32] mb-4 text-sm uppercase tracking-wider">Supabase Upload Manager</h3>
           
           {bannerUploadError && (
             <div className="mb-4 p-3 bg-red-900/30 border border-red-500 text-red-300 rounded-md">

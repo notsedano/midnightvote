@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Terminal } from 'lucide-react';
+import { getBannerUrl } from '../lib/bannerService';
 import Layout from '../components/Layout';
 import Banner from '../components/Banner';
 import Button from '../components/Button';
-import { supabase } from '../lib/supabase';
 
 const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -15,10 +15,7 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [bannerImages, setBannerImages] = useState({
-    banner1: '',
-    banner2: ''
-  });
+  const [bannerUrl, setBannerUrl] = useState('');
   
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -30,82 +27,9 @@ const RegisterPage: React.FC = () => {
     }
   }, [user, navigate]);
 
-  // Fetch banner images on load
-  useEffect(() => {
-    const fetchBannerImages = async () => {
-      try {
-        console.log("Fetching banner images for register page");
-        
-        // Try to fetch from database first - most reliable source across devices
-        try {
-          console.log("Attempting to fetch banner images from database");
-          const { data, error } = await supabase
-            .from('site_settings')
-            .select('key, value')
-            .in('key', ['login_banner1', 'login_banner2'])
-            .order('key');
-            
-          if (error) {
-            console.error('Error fetching banner images from database:', error);
-            throw error;
-          }
-          
-          if (data && data.length > 0) {
-            console.log("Banner data retrieved from database:", data);
-            const images = {
-              banner1: '',
-              banner2: ''
-            };
-            
-            data.forEach(item => {
-              if (item.key === 'login_banner1') {
-                images.banner1 = item.value;
-                // Also save to localStorage for future use
-                if (item.value) localStorage.setItem('login_banner1', item.value);
-              } else if (item.key === 'login_banner2') {
-                images.banner2 = item.value;
-                // Also save to localStorage for future use
-                if (item.value) localStorage.setItem('login_banner2', item.value);
-              }
-            });
-            
-            setBannerImages(images);
-            console.log("Banner images updated from database:", images);
-            return; // Exit early as we got data from the database
-          } else {
-            console.log("No banner data found in database");
-          }
-        } catch (dbError) {
-          console.error('Database fetch failed, falling back to localStorage:', dbError);
-        }
-        
-        // Fall back to localStorage if database fetch failed or returned no data
-        const localBanner1 = localStorage.getItem('login_banner1');
-        const localBanner2 = localStorage.getItem('login_banner2');
-        
-        if (localBanner1 || localBanner2) {
-          console.log("Using banner images from localStorage");
-          // Use localStorage values if available
-          setBannerImages({
-            banner1: localBanner1 || '',
-            banner2: localBanner2 || ''
-          });
-        } else {
-          console.log("No banner images found in localStorage or database");
-        }
-      } catch (error) {
-        console.error('Error in banner image fetch process:', error);
-      }
-    };
-    
-    fetchBannerImages();
-    
-    // Add a secondary fetch after a delay to handle slow database connections
-    const timeoutId = setTimeout(() => {
-      fetchBannerImages();
-    }, 3000);
-    
-    return () => clearTimeout(timeoutId);
+  // Load banner URL on component mount
+  React.useEffect(() => {
+    setBannerUrl(getBannerUrl('register'));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -149,169 +73,129 @@ const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
-      <div className="text-xs text-[#9ACD32] uppercase tracking-wide p-2 absolute top-0 left-0 z-10">
-        REGISTER PAGE
-      </div>
+    <Layout>
+      <Banner 
+        title="MIDNIGHTREBELS &FRIENDS"
+        subtitle="REGISTRATION FORM"
+      />
       
-      {/* Main container */}
-      <div className="flex-1 flex flex-col md:flex-row">
-        {/* Left Column: Banner Image */}
-        <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
-          <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
-            {bannerImages.banner1 ? (
-              <img 
-                src={bannerImages.banner1} 
-                alt="Left banner" 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-48 md:h-full bg-[#9ACD32] flex items-center justify-center text-black font-mono relative">
-                <div className="absolute inset-0 bg-black opacity-10 z-0" 
-                  style={{ 
-                    backgroundImage: 'linear-gradient(transparent 50%, rgba(0, 0, 0, 0.1) 50%)', 
-                    backgroundSize: '100% 4px'
-                  }}>
-                </div>
-                &lt;/banner provision 1&gt;
+      <div className="container mx-auto px-4 py-4 flex flex-col items-center justify-center max-w-md">
+        {/* Registration Form */}
+        <div className="w-full border border-[#9ACD32] p-6 bg-black rounded-sm mb-8">
+          {error && (
+            <motion.div 
+              className="mb-4 p-3 bg-error-900/30 border border-error-700 rounded-md text-error-300 text-sm"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex items-center">
+                <Terminal size={16} className="mr-2 flex-shrink-0" />
+                <div>{error}</div>
               </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Center Column: Registration Form */}
-        <div className="w-full md:w-1/3 bg-black p-4 relative">
-          <div className="mb-2">
-            <Banner 
-              title="MIDNIGHTREBELS &FRIENDS"
-              subtitle="REGISTRATION FORM"
-            />
-          </div>
+            </motion.div>
+          )}
           
-          <div className="w-full h-full border border-[#9ACD32]/30 rounded-md p-4 bg-black">
-            {error && (
-              <motion.div 
-                className="mb-4 p-3 bg-red-900/30 border border-red-500 rounded-md text-red-300 text-sm"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                <div className="flex items-center">
-                  <Terminal size={16} className="mr-2 flex-shrink-0" />
-                  <div>{error}</div>
+          {success ? (
+            <motion.div 
+              className="p-5 bg-success-900/30 border border-success-700 rounded-md text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <h2 className="text-xl font-mono text-[#9ACD32] mb-2">Verification Email Sent</h2>
+              <p className="text-gray-300 mb-4">
+                Please check your email to verify your account before logging in.
+              </p>
+              <Link to="/login">
+                <Button variant="primary" fullWidth>
+                  Go to Login
+                </Button>
+              </Link>
+            </motion.div>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <div className="mb-4">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full p-3 pl-10 bg-black border border-[#9ACD32] text-white font-mono focus:outline-none focus:border-white"
+                    required
+                  />
                 </div>
-              </motion.div>
-            )}
-            
-            {success ? (
-              <motion.div 
-                className="p-5 bg-green-900/30 border border-green-500 rounded-md text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+              </div>
+              
+              <div className="mb-4">
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-3 pl-10 bg-black border border-[#9ACD32] text-white font-mono focus:outline-none focus:border-white"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+                  <input
+                    type="password"
+                    placeholder="Confirm Password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full p-3 pl-10 bg-black border border-[#9ACD32] text-white font-mono focus:outline-none focus:border-white"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </div>
+              
+              <button 
+                type="submit" 
+                className="w-full py-3 bg-[#9ACD32] text-black font-bold font-mono hover:bg-[#8bbc2d] transition-colors flex items-center justify-center"
+                disabled={loading}
               >
-                <h2 className="text-xl font-mono text-[#9ACD32] mb-2">Verification Email Sent</h2>
-                <p className="text-gray-300 mb-4">
-                  Please check your email to verify your account before logging in.
+                {loading ? 'Signing Up...' : (
+                  <>
+                    <span className="mr-2">SIGN UP</span>
+                    <ArrowRight size={16} />
+                  </>
+                )}
+              </button>
+              
+              <div className="text-center mt-6">
+                <p className="text-gray-300 text-sm">
+                  Already have an account?
                 </p>
-                <Link to="/login">
-                  <Button variant="primary" fullWidth>
-                    Go to Login
-                  </Button>
+                <Link to="/login" className="text-[#9ACD32] font-mono hover:underline">
+                  Sign In
                 </Link>
-              </motion.div>
-            ) : (
-              <form onSubmit={handleSubmit}>
-                <div className="mb-4">
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                    <input
-                      type="email"
-                      placeholder="Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full p-3 pl-10 bg-black border border-[#9ACD32] text-white font-mono focus:outline-none focus:border-white"
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="mb-4">
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                    <input
-                      type="password"
-                      placeholder="Password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full p-3 pl-10 bg-black border border-[#9ACD32] text-white font-mono focus:outline-none focus:border-white"
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                </div>
-                
-                <div className="mb-6">
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
-                    <input
-                      type="password"
-                      placeholder="Confirm Password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="w-full p-3 pl-10 bg-black border border-[#9ACD32] text-white font-mono focus:outline-none focus:border-white"
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                </div>
-                
-                <button 
-                  type="submit" 
-                  className="w-full py-3 bg-[#9ACD32] text-black font-bold font-mono hover:bg-[#8bbc2d] transition-colors flex items-center justify-center"
-                  disabled={loading}
-                >
-                  {loading ? 'Signing Up...' : (
-                    <>
-                      <span className="mr-2">SIGN UP</span>
-                      <ArrowRight size={16} />
-                    </>
-                  )}
-                </button>
-                
-                <div className="mt-4 text-center text-xs text-gray-400">
-                  Already have an account?{" "}
-                  <Link to="/login" className="text-[#9ACD32] hover:underline">
-                    Sign In
-                  </Link>
-                </div>
-              </form>
-            )}
-          </div>
+              </div>
+            </form>
+          )}
         </div>
         
-        {/* Right Column: Banner */}
-        <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
-          <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
-            {bannerImages.banner2 ? (
-              <img 
-                src={bannerImages.banner2} 
-                alt="Right banner" 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-48 md:h-full bg-[#9ACD32] flex items-center justify-center text-black font-mono relative">
-                <div className="absolute inset-0 bg-black opacity-10 z-0" 
-                  style={{ 
-                    backgroundImage: 'linear-gradient(transparent 50%, rgba(0, 0, 0, 0.1) 50%)', 
-                    backgroundSize: '100% 4px'
-                  }}>
-                </div>
-                &lt;/banner provision 2&gt;
-              </div>
-            )}
-          </div>
+        {/* Banner */}
+        <div className="w-full border border-[#9ACD32] bg-[#9ACD32]/10 p-6 text-center font-mono text-[#9ACD32] relative">
+          {bannerUrl ? (
+            <img 
+              src={bannerUrl} 
+              alt="Register banner" 
+              className="w-full h-full object-cover absolute inset-0"
+            />
+          ) : (
+            <>&lt;/banner provision 2&gt;</>
+          )}
         </div>
       </div>
-    </div>
+    </Layout>
   );
 };
 
