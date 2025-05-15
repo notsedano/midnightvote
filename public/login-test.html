@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supabase Login Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #000;
+      color: #9ACD32;
+    }
+    
+    h1 {
+      text-align: center;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #9ACD32;
+      background-color: #111;
+      color: white;
+    }
+    
+    button {
+      background-color: #9ACD32;
+      color: black;
+      border: none;
+      padding: 10px 15px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+    }
+    
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #9ACD32;
+      min-height: 100px;
+      background-color: rgba(154, 205, 50, 0.1);
+      white-space: pre-wrap;
+    }
+    
+    .log {
+      margin-top: 20px;
+      border: 1px solid #9ACD32;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      background-color: rgba(0, 0, 0, 0.5);
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Supabase Login Test Page</h1>
+  
+  <div class="form-group">
+    <label for="email">Email:</label>
+    <input type="email" id="email" placeholder="Enter your email">
+  </div>
+  
+  <div class="form-group">
+    <label for="password">Password:</label>
+    <input type="password" id="password" placeholder="Enter your password">
+  </div>
+  
+  <div class="form-group">
+    <label for="supabaseUrl">Supabase URL:</label>
+    <input type="text" id="supabaseUrl" value="">
+  </div>
+  
+  <div class="form-group">
+    <label for="supabaseKey">Supabase Anon Key:</label>
+    <input type="text" id="supabaseKey" value="">
+  </div>
+  
+  <button id="loginBtn">Login</button>
+  <button id="directLoginBtn">Direct Login (Bypass Library)</button>
+  
+  <div class="result" id="result">Result will appear here...</div>
+  
+  <h3>Log:</h3>
+  <div class="log" id="log"></div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Utility function for logging
+    function log(message, isError = false) {
+      const logElement = document.getElementById('log');
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = `[${timestamp}] ${message}`;
+      logElement.innerHTML = entry + '\n' + logElement.innerHTML;
+      if (isError) {
+        console.error(message);
+      } else {
+        console.log(message);
+      }
+    }
+
+    // Try to get environment variables from sessionStorage
+    document.getElementById('supabaseUrl').value = sessionStorage.getItem('supabaseUrl') || '';
+    document.getElementById('supabaseKey').value = sessionStorage.getItem('supabaseKey') || '';
+
+    // Standard login with Supabase client
+    document.getElementById('loginBtn').addEventListener('click', async function() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const supabaseUrl = document.getElementById('supabaseUrl').value;
+      const supabaseKey = document.getElementById('supabaseKey').value;
+      
+      // Save values for future use
+      sessionStorage.setItem('supabaseUrl', supabaseUrl);
+      sessionStorage.setItem('supabaseKey', supabaseKey);
+      
+      if (!email || !password || !supabaseUrl || !supabaseKey) {
+        log('Please fill in all fields', true);
+        return;
+      }
+      
+      log(`Logging in with email: ${email} to Supabase URL: ${supabaseUrl}`);
+      
+      try {
+        // Create Supabase client with global reference
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // Attempt login
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (error) {
+          log(`Login error: ${error.message}`, true);
+          document.getElementById('result').textContent = JSON.stringify(error, null, 2);
+        } else {
+          log('Login successful!');
+          document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (err) {
+        log(`Exception: ${err.message}`, true);
+        document.getElementById('result').textContent = err.message;
+      }
+    });
+    
+    // Direct login without Supabase client
+    document.getElementById('directLoginBtn').addEventListener('click', async function() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const supabaseUrl = document.getElementById('supabaseUrl').value;
+      const supabaseKey = document.getElementById('supabaseKey').value;
+      
+      // Save values for future use
+      sessionStorage.setItem('supabaseUrl', supabaseUrl);
+      sessionStorage.setItem('supabaseKey', supabaseKey);
+      
+      if (!email || !password || !supabaseUrl || !supabaseKey) {
+        log('Please fill in all fields', true);
+        return;
+      }
+      
+      log(`Direct login with email: ${email} to Supabase URL: ${supabaseUrl}`);
+      
+      try {
+        // Construct the URL
+        const url = `https://${supabaseUrl}/auth/v1/token?grant_type=password`;
+        
+        // Set up headers
+        const headers = {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+        };
+        
+        // Make the request
+        const response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ 
+            email, 
+            password,
+            gotrue_meta_security: {}
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          log(`Direct login error: ${data.error || 'Unknown error'}`, true);
+        } else {
+          log('Direct login successful!');
+        }
+        
+        document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        log(`Exception: ${err.message}`, true);
+        document.getElementById('result').textContent = err.message;
+      }
+    });
+    
+    // Initialize
+    log('Login test page loaded. Fill in your credentials to test.');
+  </script>
+</body>
+</html> 
