@@ -176,12 +176,25 @@ const VotePage: React.FC = () => {
 
   return (
     <Layout>
+      {/* Add the banner image at the top */}
+      {bannerImage ? (
+        <div className="w-full bg-black relative">
+          <div className="w-full border-b border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
+            <img 
+              src={bannerImage} 
+              alt="Banner" 
+              className="w-full h-40 object-cover"
+            />
+          </div>
+        </div>
+      ) : null}
+      
       <Banner 
         title="MIDNIGHTREBELS &FRIENDS"
         subtitle="DJ COMPETITION - HOLD TO VOTE, VOTES ARE PERMANENT"
       />
       
-      <div className="container mx-auto px-4 py-4 relative mb-32">
+      <div className="container mx-auto px-4 py-4 relative mb-20">
         {/* Instructions Panel */}
         <div className="border border-[#9ACD32] bg-black p-3 mb-6 rounded-md">
           <div className="border-b border-[#9ACD32]/50 pb-2 mb-3 flex items-center justify-between">
@@ -223,7 +236,7 @@ const VotePage: React.FC = () => {
           {userVote && (
             <div className="border-t border-[#9ACD32]/30 pt-3 mt-2">
               <div className="flex items-center justify-center px-4 py-2 bg-black/50 border border-[#9ACD32]/30 text-[#9ACD32] font-mono text-sm rounded-md w-full md:w-auto">
-                <span> YOUR VOTE HAS BEEN RECORDED ONCHAIN | TX: <a href={`/explorer?tx=${userVote.transaction_id}`} className="underline hover:text-white transition-colors">{userVote.transaction_id.substring(0, 8)}...{userVote.transaction_id.substring(userVote.transaction_id.length - 8)}</a></span>
+                <span>YOUR VOTE HAS BEEN RECORDED ONCHAIN {candidates.find(c => c.id === userVote.candidate_id)?.name.toUpperCase()}</span>
               </div>
             </div>
           )}
@@ -272,24 +285,6 @@ const VotePage: React.FC = () => {
       />
       
       <Navigation />
-      
-      {/* Fixed Footer Banner */}
-      {bannerImage ? (
-        <div className="fixed bottom-0 left-0 w-full bg-black z-50">
-          <div className="w-full border-t border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
-            <img 
-              src={bannerImage} 
-              alt="Banner" 
-              className="w-full h-24 object-cover opacity-90"
-            />
-          </div>
-          <div className="w-full bg-black border-t border-[#9ACD32]/50 text-center py-2">
-            <a href="https://midnightrebels.com" target="_blank" rel="noopener noreferrer" className="text-[#9ACD32] font-mono text-xs font-bold hover:text-white transition-colors">
-              MIDNIGHT REBELS © 2023 ALL RIGHTS RESERVED
-            </a>
-          </div>
-        </div>
-      ) : null}
     </Layout>
   );
 };
