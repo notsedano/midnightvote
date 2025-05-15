@@ -556,15 +556,22 @@ const VoteCard: React.FC<VoteCardProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowVideoModal(false)}
+            onTouchEnd={(e) => {
+              // Only close if touch is on the backdrop, not the modal itself
+              if (e.target === e.currentTarget) {
+                setShowVideoModal(false);
+              }
+            }}
           >
             <motion.div 
               ref={videoModalRef}
-              className="bg-black border border-[#9ACD32] rounded-md w-full max-w-3xl overflow-hidden"
+              className="bg-black border border-[#9ACD32] rounded-md w-full max-w-3xl overflow-hidden touch-none"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: 'spring', damping: 20 }}
               onClick={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
             >
               <div className="p-2 flex justify-between items-center border-b border-[#9ACD32]/30">
                 <div className="text-[#9ACD32] font-mono text-sm flex items-center">
@@ -573,13 +580,21 @@ const VoteCard: React.FC<VoteCardProps> = ({
                 </div>
                 <button 
                   onClick={() => setShowVideoModal(false)}
-                  className="text-[#9ACD32]/70 hover:text-[#9ACD32] transition-colors"
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowVideoModal(false);
+                  }}
+                  className="text-[#9ACD32]/70 hover:text-[#9ACD32] transition-colors p-3 touch-manipulation relative"
+                  aria-label="Close video"
                 >
+                  {/* Invisible larger touch area */}
+                  <span className="absolute inset-0"></span>
                   <X size={20} />
                 </button>
               </div>
               
-              <div className="aspect-video w-full">
+              <div className="aspect-video w-full bg-black">
                 <iframe
                   className="w-full h-full"
                   src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`}
@@ -587,6 +602,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
+                  loading="lazy"
                 ></iframe>
               </div>
             </motion.div>
