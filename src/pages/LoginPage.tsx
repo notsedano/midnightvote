@@ -120,15 +120,38 @@ const LoginPage: React.FC = () => {
     setError(null);
     
     try {
+      console.log("Login attempt for:", email);
+      
+      // Try direct API test first
+      try {
+        console.log("Testing direct Supabase connection...");
+        const { data, error: pingError } = await supabase.from('profiles').select('count').limit(1);
+        console.log("Supabase connection test:", { success: !pingError, data, error: pingError?.message });
+        
+        if (pingError) {
+          console.error("Supabase connection test failed:", pingError);
+        }
+      } catch (testError: any) {
+        console.error("Connection test error:", testError.message);
+      }
+      
       // Pass the IP address to signIn
       const { error } = await signIn(email, password, userIp);
       
-      if (error) throw error;
+      if (error) {
+        console.error("Login API error:", error);
+        throw error;
+      }
       
       navigate('/vote');
     } catch (err: any) {
-      console.error('Login error:', err);
-      setError(err.message || 'Failed to sign in');
+      console.error('Login error details:', {
+        message: err.message,
+        status: err.status,
+        name: err.name,
+        stack: err.stack
+      });
+      setError(err.message || 'Failed to sign in. Please check console for details.');
     } finally {
       setLoading(false);
     }
