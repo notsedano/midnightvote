@@ -8,14 +8,10 @@ try {
   console.log("Note: dotenv not found. Using manually entered credentials instead.");
 }
 
-// Get credentials from environment variables first, if available
-const ENV_SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
-const ENV_SUPABASE_SERVICE_KEY = process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || '';
-
-// IMPORTANT: Update these variables with your actual Supabase credentials
-// These will be used as fallbacks if environment variables are not available
-const SUPABASE_URL = ENV_SUPABASE_URL || "YOUR_SUPABASE_URL"; // from Project Settings > API
-const SUPABASE_SERVICE_KEY = ENV_SUPABASE_SERVICE_KEY || "YOUR_SERVICE_ROLE_KEY"; // Service Role Key (not anon key)
+// IMPORTANT: Update these variables with your actual Supabase credentials from your project
+// To find these in Supabase: Project Settings > API
+const SUPABASE_URL = "https://oipivldhfvhrcjfivq.supabase.co";
+const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcGl2bGRoZnZocmNqZml2cSIsInJvbGUiOiJzZXJ2aWNlX3JvbGUiLCJpYXQiOjE3NDczNjM3NzQsImV4cCI6MjA2Mjk0MDE3NH0.lrU-QOyMuhgqwtgO0F0K6Q3lhGkZPr06wgMPQb-Q9xE";
 
 // Try to load the required package
 let createClient;
@@ -27,34 +23,11 @@ try {
   process.exit(1);
 }
 
-// Normalize Supabase URL
-function normalizeSupabaseUrl(url) {
-  if (!url) return url;
-  
-  // Already a full URL
-  if (url.startsWith('https://')) return url;
-  
-  // Domain without protocol
-  if (url.includes('.supabase.co')) return `https://${url}`;
-  
-  // Just the project ID
-  return `https://${url}.supabase.co`;
-}
-
 // Bucket configuration
 const bucketName = 'banners';
 const bucketIsPublic = true; // Makes bucket publicly accessible
 
 async function createBucket() {
-  if (SUPABASE_URL === "YOUR_SUPABASE_URL" || SUPABASE_SERVICE_KEY === "YOUR_SERVICE_ROLE_KEY") {
-    console.error("\n⚠️ ERROR: You must update the script with your actual Supabase credentials");
-    console.error("Please edit this file and replace:");
-    console.error("1. YOUR_SUPABASE_URL with your actual Supabase URL");
-    console.error("2. YOUR_SERVICE_ROLE_KEY with your Service Role Key");
-    console.error("\nYou can find these in your Supabase dashboard under Project Settings > API");
-    return;
-  }
-
   try {
     console.log(`\n📄 Connecting to Supabase at ${SUPABASE_URL}`);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -99,60 +72,36 @@ async function createBucket() {
       .limit(1);
       
     if (settingsError) {
-      if (settingsError.code === '42P01') { // "relation does not exist" PostgreSQL error code
-        console.log("❌ site_settings table does not exist. Creating it now...");
-        
-        // Execute the SQL to create the table
-        const { error: createTableError } = await supabase.rpc('create_settings_table', {});
-        
-        if (createTableError) {
-          console.error(`❌ Error creating site_settings table: ${createTableError.message}`);
-          
-          // Try alternative approach using direct SQL (requires proper permissions)
-          console.log("Trying direct SQL approach...");
-          
-          const createTableSQL = `
-            CREATE TABLE IF NOT EXISTS public.site_settings (
-              id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-              key TEXT NOT NULL UNIQUE,
-              value TEXT,
-              created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
-              updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
-            );
-            
-            -- Add RLS policies for site_settings table
-            ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
-            
-            -- Policy for any authenticated user to read settings
-            CREATE POLICY "Anyone can read settings" 
-            ON public.site_settings 
-            FOR SELECT 
-            USING (true);
-            
-            -- Policy for authenticated users to insert/update/delete settings
-            CREATE POLICY "Authenticated users can manage settings" 
-            ON public.site_settings 
-            FOR ALL 
-            USING (auth.role() = 'authenticated');
-            
-            -- Add initial settings if needed
-            INSERT INTO public.site_settings (key, value)
-            VALUES 
-              ('login_banner1', ''),
-              ('login_banner2', '')
-            ON CONFLICT (key) DO NOTHING;
-          `;
-          
-          // This direct SQL execution will only work with older Supabase versions or custom SQL functions
-          // For newer Supabase, you'll need to run this SQL in the SQL Editor in the Supabase Dashboard
-          console.log("Please create the site_settings table manually using the SQL editor in Supabase Dashboard.");
-          console.log("Use the SQL from the create-settings-table.sql file in your project.");
-        } else {
-          console.log("✅ site_settings table created successfully!");
-        }
-      } else {
-        console.error(`❌ Error checking site_settings table: ${settingsError.message}`);
-      }
+      console.error(`❌ Error checking site_settings table: ${settingsError.message}`);
+      console.log("Creating site_settings table using SQL Editor...");
+      
+      // For safety, we won't execute SQL directly, but provide instructions
+      console.log("\n🚨 IMPORTANT: Execute the following SQL in your Supabase SQL Editor:");
+      console.log(`
+-- Create site_settings table
+CREATE TABLE IF NOT EXISTS public.site_settings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  key TEXT NOT NULL UNIQUE,
+  value TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL
+);
+
+-- Add RLS policies for site_settings table
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
+
+-- Policy for any authenticated user to read settings
+CREATE POLICY "Anyone can read settings" 
+ON public.site_settings 
+FOR SELECT 
+USING (true);
+
+-- Policy for authenticated users to insert/update/delete settings
+CREATE POLICY "Authenticated users can manage settings" 
+ON public.site_settings 
+FOR ALL 
+USING (auth.role() = 'authenticated');
+      `);
     } else {
       console.log("✅ site_settings table already exists");
       
@@ -182,6 +131,11 @@ async function createBucket() {
         }
       } else {
         console.log("✅ Banner settings are properly set up");
+        // Print the current banner settings for debugging
+        console.log("Current banner settings:");
+        bannerSettings.forEach(setting => {
+          console.log(`- ${setting.key}: ${setting.value ? (setting.value.substring(0, 30) + '...') : '(empty)'}`);
+        });
       }
     }
 

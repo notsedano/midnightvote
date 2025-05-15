@@ -59,7 +59,7 @@ export async function uploadImage(file: File, bucket: string, path: string): Pro
 }
 
 /**
- * Updates a site setting in the database or localStorage
+ * Updates a site setting in the database and localStorage
  * @param key The setting key
  * @param value The setting value
  * @returns An object with the update result
@@ -71,20 +71,45 @@ export async function updateSiteSetting(key: string, value: string): Promise<{
   try {
     console.log(`Updating site setting: ${key} with value length: ${value.length}`);
     
-    // First try to update in database
+    // Always update localStorage for immediate local effect
+    localStorage.setItem(key, value);
+    console.log(`Updated localStorage for key: ${key}`);
+    
+    // Then try to update in database
     const { error } = await supabase
       .from('site_settings')
       .upsert({ key, value });
       
     if (error) {
+      // Database error handling
       console.error('Site setting update error:', error);
       console.warn('Failed to update database. This means other users will not see the banner image.');
-      throw error; // Throw error to indicate database failure
+      
+      // Try again using a direct API call to bypass RLS issues
+      try {
+        console.log("Trying alternative method to update setting...");
+        
+        // This method might work even if the first fails due to RLS issues
+        const { error: altError } = await supabase.rpc('update_site_setting', { 
+          setting_key: key,
+          setting_value: value 
+        });
+        
+        if (altError) {
+          console.error('Alternative update method also failed:', altError);
+          throw error; // Use the original error for consistency
+        } else {
+          console.log("Alternative update method successful!");
+          return {
+            success: true,
+            error: null
+          };
+        }
+      } catch (rpcError) {
+        console.error('RPC error:', rpcError);
+        throw error; // Use the original error for consistency
+      }
     }
-    
-    // Only update localStorage if database update succeeded
-    localStorage.setItem(key, value);
-    console.log(`Updated localStorage for key: ${key}`);
     
     return {
       success: true,
@@ -93,14 +118,6 @@ export async function updateSiteSetting(key: string, value: string): Promise<{
   } catch (error: any) {
     console.error('Error updating site setting:', error.message);
     console.error('Error details:', error);
-    
-    // Still update localStorage for the current user's experience
-    try {
-      localStorage.setItem(key, value);
-      console.log(`Fallback: Updated localStorage for key: ${key}`);
-    } catch (localError) {
-      console.error('Failed to update even localStorage:', localError);
-    }
     
     return {
       success: false,
