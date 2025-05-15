@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Navigation from '../components/Navigation';
 import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
-import { Trash2, RefreshCw, PlusCircle, BarChart2, Users, Award, Terminal, Edit2, Youtube, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Trash2, RefreshCw, PlusCircle, BarChart2, Users, Award, Terminal, Edit2, Youtube, X } from 'lucide-react';
 import VoteChart from '../components/VoteChart';
 import { supabase } from '../lib/supabase';
 import IpTrackingPanel from '../components/IpTrackingPanel';
@@ -24,15 +24,8 @@ const AdminPage: React.FC = () => {
     genre: '',
     youtube_url: '',
   });
-  const [showImageUploader, setShowImageUploader] = useState(false);
-  const [selectedBanner, setSelectedBanner] = useState<'banner1' | 'banner2' | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [bannerImages, setBannerImages] = useState({
-    banner1: '',
-    banner2: ''
-  });
   
-  // Get voter count and banner images
+  // Get voter count
   useEffect(() => {
     const fetchVoterCount = async () => {
       try {
@@ -48,55 +41,7 @@ const AdminPage: React.FC = () => {
       }
     };
     
-    const fetchBannerImages = async () => {
-      try {
-        // Check localStorage first
-        const localBanner1 = localStorage.getItem('login_banner1');
-        const localBanner2 = localStorage.getItem('login_banner2');
-        
-        // Initialize with localStorage values if available
-        const images = {
-          banner1: localBanner1 || '',
-          banner2: localBanner2 || ''
-        };
-        
-        // Only fetch from Supabase if not found in localStorage
-        if (!localBanner1 || !localBanner2) {
-          try {
-            const { data, error } = await supabase
-              .from('site_settings')
-              .select('key, value')
-              .in('key', ['login_banner1', 'login_banner2'])
-              .order('key');
-                
-            if (error) throw error;
-            
-            if (data && data.length > 0) {
-              data.forEach(item => {
-                if (item.key === 'login_banner1' && !localBanner1) {
-                  images.banner1 = item.value;
-                  // Also save to localStorage for future use
-                  localStorage.setItem('login_banner1', item.value);
-                } else if (item.key === 'login_banner2' && !localBanner2) {
-                  images.banner2 = item.value;
-                  // Also save to localStorage for future use
-                  localStorage.setItem('login_banner2', item.value);
-                }
-              });
-            }
-          } catch (dbErr) {
-            console.warn('Failed to fetch images from database, using localStorage only:', dbErr);
-          }
-        }
-        
-        setBannerImages(images);
-      } catch (error) {
-        console.error('Error fetching banner images:', error);
-      }
-    };
-    
     fetchVoterCount();
-    fetchBannerImages();
   }, []);
   
   const handleRefresh = async () => {
@@ -205,95 +150,6 @@ const AdminPage: React.FC = () => {
     return null;
   };
   
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!selectedBanner) {
-      setError('Please select a banner position first');
-      return;
-    }
-    
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    // Validate file type
-    if (!file.type.match('image.*')) {
-      setError('Please upload an image file');
-      return;
-    }
-    
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size exceeded. Maximum size is 5MB');
-      return;
-    }
-    
-    setUploadingImage(true);
-    setError(null);
-    
-    try {
-      // Create a FileReader to convert the image to a data URL
-      const reader = new FileReader();
-      
-      reader.onload = async (event) => {
-        const imageDataUrl = event.target?.result as string;
-        
-        if (!imageDataUrl) {
-          throw new Error('Failed to convert image to data URL');
-        }
-        
-        try {
-          // Save the data URL to localStorage
-          const key = selectedBanner === 'banner1' ? 'login_banner1' : 'login_banner2';
-          localStorage.setItem(key, imageDataUrl);
-          
-          // Also save to the site_settings table for persistence across sessions
-          // This is optional - if you want to remove all Supabase dependencies, you can remove this
-          try {
-            const { error: updateError } = await supabase
-              .from('site_settings')
-              .upsert({ 
-                key, 
-                value: imageDataUrl 
-              });
-              
-            if (updateError) console.warn('Warning: Could not save to database:', updateError);
-          } catch (dbErr) {
-            console.warn('Warning: Could not save to database:', dbErr);
-            // Continue anyway since we saved to localStorage
-          }
-          
-          // Update local state
-          setBannerImages(prev => ({
-            ...prev,
-            [selectedBanner]: imageDataUrl
-          }));
-          
-          // Reset form
-          setSelectedBanner(null);
-          setShowImageUploader(false);
-          
-        } catch (err: any) {
-          console.error('Error saving image:', err);
-          setError(err.message || 'Failed to save image');
-        } finally {
-          setUploadingImage(false);
-        }
-      };
-      
-      reader.onerror = () => {
-        setError('Failed to read the image file');
-        setUploadingImage(false);
-      };
-      
-      // Read the image file as a data URL
-      reader.readAsDataURL(file);
-      
-    } catch (err: any) {
-      console.error('Error handling image:', err);
-      setError(err.message || 'Failed to process image');
-      setUploadingImage(false);
-    }
-  };
-  
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -357,208 +213,6 @@ const AdminPage: React.FC = () => {
               <BarChart2 size={18} className="text-[#9ACD32]" />
             </div>
             <div className="text-2xl text-[#9ACD32]">{totalVotes}</div>
-          </div>
-        </div>
-        
-        {/* Image Upload Section */}
-        <div className="mb-6 p-4 bg-black border border-[#9ACD32]/30 rounded-md">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg text-[#9ACD32]">Login Page Banners</h2>
-            <button 
-              onClick={() => setShowImageUploader(!showImageUploader)}
-              className="flex items-center text-sm bg-[#9ACD32]/10 border border-[#9ACD32]/50 text-[#9ACD32] px-3 py-1 rounded hover:bg-[#9ACD32]/20 transition duration-200"
-            >
-              <Upload size={14} className="mr-1" />
-              {showImageUploader ? 'Cancel' : 'Upload Image'}
-            </button>
-          </div>
-          
-          {showImageUploader && (
-            <div className="mb-6 p-4 bg-black border border-[#9ACD32]/20 rounded-md">
-              <div className="mb-4">
-                <h3 className="text-sm text-[#9ACD32] mb-2">Select Banner Position</h3>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => setSelectedBanner('banner1')}
-                    className={`px-3 py-2 rounded-md text-xs ${
-                      selectedBanner === 'banner1' 
-                        ? 'bg-[#9ACD32] text-black' 
-                        : 'bg-[#9ACD32]/10 border border-[#9ACD32]/30 text-[#9ACD32]'
-                    }`}
-                  >
-                    Left Banner
-                  </button>
-                  <button
-                    onClick={() => setSelectedBanner('banner2')}
-                    className={`px-3 py-2 rounded-md text-xs ${
-                      selectedBanner === 'banner2' 
-                        ? 'bg-[#9ACD32] text-black' 
-                        : 'bg-[#9ACD32]/10 border border-[#9ACD32]/30 text-[#9ACD32]'
-                    }`}
-                  >
-                    Right Banner
-                  </button>
-                </div>
-              </div>
-              
-              <div className="mb-2">
-                <label className="block text-gray-400 text-xs mb-2">Upload Image (Max 5MB, JPG/PNG/GIF)</label>
-                <div className="flex">
-                  <label className="flex-1 cursor-pointer bg-[#9ACD32]/5 border border-[#9ACD32]/30 text-white rounded-md overflow-hidden flex items-center">
-                    <span className="px-3 py-2 flex-1 truncate">
-                      {uploadingImage ? 'Uploading...' : 'Choose file'}
-                    </span>
-                    <div className="bg-[#9ACD32]/10 h-full px-3 flex items-center">
-                      <ImageIcon size={16} className="text-[#9ACD32]" />
-                    </div>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      disabled={!selectedBanner || uploadingImage}
-                    />
-                  </label>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Recommended dimensions: 800x1200px (portrait)
-                </p>
-              </div>
-            </div>
-          )}
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-2 border border-[#9ACD32]/30 rounded-md">
-              <h3 className="text-sm text-gray-400 mb-2">Left Banner</h3>
-              <div className="aspect-[3/4] bg-dark-900 border border-[#9ACD32]/20 rounded flex items-center justify-center overflow-hidden relative">
-                {bannerImages.banner1 ? (
-                  <>
-                    <img 
-                      src={bannerImages.banner1} 
-                      alt="Left login banner" 
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-60 transition-opacity flex items-center justify-center opacity-0 hover:opacity-100">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => setSelectedBanner('banner1')}
-                          className="bg-[#9ACD32]/20 hover:bg-[#9ACD32]/40 text-[#9ACD32] p-2 rounded-md"
-                          title="Change image"
-                        >
-                          <Upload size={18} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this banner image?')) {
-                              // Remove from localStorage
-                              localStorage.removeItem('login_banner1');
-                              // Update state
-                              setBannerImages(prev => ({
-                                ...prev,
-                                banner1: ''
-                              }));
-                              // Optionally remove from database too
-                              try {
-                                supabase
-                                  .from('site_settings')
-                                  .update({ value: '' })
-                                  .eq('key', 'login_banner1')
-                                  .then(({ error }) => {
-                                    if (error) console.warn('Warning: Could not update database:', error);
-                                  });
-                              } catch (err) {
-                                console.warn('Error updating database:', err);
-                              }
-                            }
-                          }}
-                          className="bg-red-900/20 hover:bg-red-900/40 text-red-400 p-2 rounded-md"
-                          title="Delete image"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-gray-600 text-xs font-mono flex flex-col items-center">
-                    <ImageIcon size={24} className="mb-2 opacity-50" />
-                    No image set
-                    <button
-                      onClick={() => setSelectedBanner('banner1')}
-                      className="mt-2 bg-[#9ACD32]/10 hover:bg-[#9ACD32]/20 text-[#9ACD32] px-3 py-1 rounded text-xs"
-                    >
-                      Set Image
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            <div className="p-2 border border-[#9ACD32]/30 rounded-md">
-              <h3 className="text-sm text-gray-400 mb-2">Right Banner</h3>
-              <div className="aspect-[3/4] bg-dark-900 border border-[#9ACD32]/20 rounded flex items-center justify-center overflow-hidden relative">
-                {bannerImages.banner2 ? (
-                  <>
-                    <img 
-                      src={bannerImages.banner2} 
-                      alt="Right login banner" 
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-60 transition-opacity flex items-center justify-center opacity-0 hover:opacity-100">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => setSelectedBanner('banner2')}
-                          className="bg-[#9ACD32]/20 hover:bg-[#9ACD32]/40 text-[#9ACD32] p-2 rounded-md"
-                          title="Change image"
-                        >
-                          <Upload size={18} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this banner image?')) {
-                              // Remove from localStorage
-                              localStorage.removeItem('login_banner2');
-                              // Update state
-                              setBannerImages(prev => ({
-                                ...prev,
-                                banner2: ''
-                              }));
-                              // Optionally remove from database too
-                              try {
-                                supabase
-                                  .from('site_settings')
-                                  .update({ value: '' })
-                                  .eq('key', 'login_banner2')
-                                  .then(({ error }) => {
-                                    if (error) console.warn('Warning: Could not update database:', error);
-                                  });
-                              } catch (err) {
-                                console.warn('Error updating database:', err);
-                              }
-                            }
-                          }}
-                          className="bg-red-900/20 hover:bg-red-900/40 text-red-400 p-2 rounded-md"
-                          title="Delete image"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-gray-600 text-xs font-mono flex flex-col items-center">
-                    <ImageIcon size={24} className="mb-2 opacity-50" />
-                    No image set
-                    <button
-                      onClick={() => setSelectedBanner('banner2')}
-                      className="mt-2 bg-[#9ACD32]/10 hover:bg-[#9ACD32]/20 text-[#9ACD32] px-3 py-1 rounded text-xs"
-                    >
-                      Set Image
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
         
