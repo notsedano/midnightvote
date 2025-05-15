@@ -8,11 +8,51 @@ import LoadingScreen from '../components/LoadingScreen';
 import { RefreshCw, Terminal } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Layout from '../components/Layout';
+import { supabase } from '../lib/supabase';
 
 const ResultsPage: React.FC = () => {
   const { candidates, votes, voteCounts, totalVotes, isLoading, fetchVotes } = useVoting();
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [bannerImage, setBannerImage] = useState<string>('');
+  
+  // Fetch banner image on load
+  useEffect(() => {
+    const fetchBannerImage = async () => {
+      try {
+        // First check localStorage
+        const localBanner = localStorage.getItem('login_banner1');
+        
+        if (localBanner) {
+          // Use localStorage value if available
+          setBannerImage(localBanner);
+        } else {
+          // Fall back to database if localStorage is empty
+          try {
+            const { data, error } = await supabase
+              .from('site_settings')
+              .select('value')
+              .eq('key', 'login_banner1')
+              .single();
+              
+            if (error) throw error;
+            
+            if (data?.value) {
+              setBannerImage(data.value);
+              // Also save to localStorage for future use
+              localStorage.setItem('login_banner1', data.value);
+            }
+          } catch (dbError) {
+            console.error('Error fetching banner image from database:', dbError);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching banner image:', error);
+      }
+    };
+    
+    fetchBannerImage();
+  }, []);
   
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -27,6 +67,19 @@ const ResultsPage: React.FC = () => {
 
   return (
     <Layout>
+      {/* Add the banner image at the top */}
+      {bannerImage ? (
+        <div className="w-full bg-black relative">
+          <div className="w-full border-b border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
+            <img 
+              src={bannerImage} 
+              alt="Banner" 
+              className="w-full h-40 object-cover"
+            />
+          </div>
+        </div>
+      ) : null}
+      
       <Banner 
         title="VOTING RESULTS"
         subtitle="REAL-TIME STATISTICS"

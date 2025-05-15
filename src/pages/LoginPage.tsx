@@ -205,10 +205,6 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      <div className="text-xs text-[#9ACD32] uppercase tracking-wide p-2 absolute top-0 left-0 z-10">
-        LOGIN PAGE
-      </div>
-      
       {/* Main container */}
       <div className="flex-1 flex flex-col md:flex-row">
         {/* Left Column: Banner Image */}

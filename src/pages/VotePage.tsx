@@ -11,6 +11,7 @@ import { Music, Info, Headphones, Terminal, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
+import { supabase } from '../lib/supabase';
 
 /**
  * Vote Page Component
@@ -28,6 +29,7 @@ const VotePage: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [voteCancelled, setVoteCancelled] = useState(false);
+  const [bannerImage, setBannerImage] = useState<string>('');
   const [notification, setNotification] = useState<{
     message: string;
     type: 'success' | 'error' | 'info';
@@ -38,6 +40,44 @@ const VotePage: React.FC = () => {
     isVisible: false
   });
   const navigate = useNavigate();
+  
+  // Fetch banner image on load
+  useEffect(() => {
+    const fetchBannerImage = async () => {
+      try {
+        // First check localStorage
+        const localBanner = localStorage.getItem('login_banner1');
+        
+        if (localBanner) {
+          // Use localStorage value if available
+          setBannerImage(localBanner);
+        } else {
+          // Fall back to database if localStorage is empty
+          try {
+            const { data, error } = await supabase
+              .from('site_settings')
+              .select('value')
+              .eq('key', 'login_banner1')
+              .single();
+              
+            if (error) throw error;
+            
+            if (data?.value) {
+              setBannerImage(data.value);
+              // Also save to localStorage for future use
+              localStorage.setItem('login_banner1', data.value);
+            }
+          } catch (dbError) {
+            console.error('Error fetching banner image from database:', dbError);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching banner image:', error);
+      }
+    };
+    
+    fetchBannerImage();
+  }, []);
   
   // Reset vote submitted state when userVote changes
   useEffect(() => {
@@ -136,6 +176,19 @@ const VotePage: React.FC = () => {
 
   return (
     <Layout>
+      {/* Add the banner image at the top */}
+      {bannerImage ? (
+        <div className="w-full bg-black relative">
+          <div className="w-full border-b border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
+            <img 
+              src={bannerImage} 
+              alt="Banner" 
+              className="w-full h-40 object-cover"
+            />
+          </div>
+        </div>
+      ) : null}
+      
       <Banner 
         title="MIDNIGHTREBELS &FRIENDS"
         subtitle="DJ COMPETITION - HOLD TO VOTE, VOTES ARE PERMANENT"
