@@ -2,16 +2,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-// Create a logger helper
-const logger = {
-  info: (message: string, data?: any) => {
-    console.log(`[AUTH] ${message}`, data || '');
-  },
-  error: (message: string, error?: any) => {
-    console.error(`[AUTH ERROR] ${message}`, error || '');
-  }
-};
-
 type AuthContextType = {
   session: Session | null;
   user: User | null;
@@ -44,64 +34,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<any | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [retryCount, setRetryCount] = useState(0);
-
-  // Function to get session with retry logic
-  const getSessionWithRetry = async () => {
-    try {
-      logger.info('Attempting to get session');
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        logger.info('Session retrieved successfully');
-        setSession(session);
-        setUser(session?.user ?? null);
-      } else {
-        logger.info('No active session found');
-      }
-      
-      setIsLoading(false);
-      // Reset retry count on success
-      setRetryCount(0);
-      
-    } catch (error) {
-      logger.error('Error retrieving session', error);
-      
-      // Implement retry logic with exponential backoff
-      if (retryCount < 3) {
-        const nextRetry = retryCount + 1;
-        setRetryCount(nextRetry);
-        
-        const delay = Math.pow(2, nextRetry) * 1000; // Exponential backoff
-        logger.info(`Retrying in ${delay}ms (attempt ${nextRetry}/3)`);
-        
-        setTimeout(() => {
-          getSessionWithRetry();
-        }, delay);
-      } else {
-        logger.error('Maximum retry attempts reached');
-        setIsLoading(false);
-      }
-    }
-  };
 
   useEffect(() => {
-    // Get initial session with retry mechanism
-    getSessionWithRetry();
+    // Retry function for getting the initial session
+    const getInitialSession = async () => {
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const { data } = await supabase.auth.getSession();
+          setSession(data.session);
+          setUser(data.session?.user ?? null);
+          setIsLoading(false);
+          return;
+        } catch (error) {
+          console.error(`Failed to get initial session (attempt ${attempts + 1}/${maxAttempts}):`, error);
+          attempts++;
+          
+          // If this is the last attempt, set loading to false
+          if (attempts >= maxAttempts) {
+            setIsLoading(false);
+            console.warn('All attempts to get initial session failed');
+          } else {
+            // Otherwise wait before retrying
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
+        }
+      }
+    };
+    
+    // Get initial session with retry
+    getInitialSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      logger.info(`Auth state changed: ${_event}`);
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
     });
 
     // Clean up subscription
-    return () => {
-      logger.info('Cleaning up auth subscription');
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   // Fetch user profile whenever user changes
@@ -118,7 +92,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
 
     try {
-      logger.info(`Fetching profile for user: ${user.id}`);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -126,11 +99,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
-        logger.error('Error fetching profile:', error);
+        console.error('Error fetching profile:', error);
         
         // Special case handling for the known admin email
         if (user.email === 'contact.strodano@gmail.com') {
-          logger.info('Detected contact.strodano@gmail.com - special admin handling');
+          console.log('Detected contact.strodano@gmail.com - special admin handling');
           setIsAdmin(true);
           setProfile({ ...user, is_admin: true });
           return;
@@ -145,14 +118,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAdmin(data?.is_admin ?? false);
         }
         
-        logger.info('Profile loaded successfully', {
+        // Add debug logs to help diagnose admin issues
+        console.log('Auth Context - Profile loaded:', {
           userId: user.id,
           email: user.email,
-          isAdmin: user.email === 'contact.strodano@gmail.com' ? true : (data?.is_admin ?? false)
+          isAdmin: user.email === 'contact.strodano@gmail.com' ? true : (data?.is_admin ?? false),
+          profileData: data
         });
       }
     } catch (e) {
-      logger.error('Unexpected error in fetchProfile:', e);
+      console.error('Unexpected error in fetchProfile:', e);
     }
   };
 
@@ -161,8 +136,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!userId || !ipAddress) return;
     
     try {
-      logger.info(`Updating IP address for user ${userId}: ${ipAddress}`);
-      
       // Check if we have a profiles_ip table
       const { error: checkError } = await supabase
         .from('profiles_ip')
@@ -171,13 +144,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
       if (checkError) {
         // If the table doesn't exist, try updating the profiles metadata instead
-        logger.info('profiles_ip table not found, trying metadata update');
+        console.log('profiles_ip table not found, trying metadata update');
         const { error } = await supabase
           .from('profiles')
           .update({ metadata: { ip_address: ipAddress, last_login: new Date().toISOString() } })
           .eq('id', userId);
           
-        if (error) logger.error('Error updating profile metadata:', error);
+        if (error) console.error('Error updating profile metadata:', error);
       } else {
         // If the table exists, upsert the IP record
         const { error } = await supabase
@@ -188,90 +161,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             last_login: new Date().toISOString() 
           });
           
-        if (error) logger.error('Error updating profiles_ip:', error);
+        if (error) console.error('Error updating profiles_ip:', error);
       }
     } catch (e) {
-      logger.error('Error in updateUserIp:', e);
+      console.error('Error in updateUserIp:', e);
     }
   };
 
   const signIn = async (email: string, password: string, ipAddress?: string) => {
-    try {
-      logger.info(`Attempting to sign in user: ${email}`);
-      
-      const { error, data } = await supabase.auth.signInWithPassword({ email, password });
-      
-      if (error) {
-        logger.error('Sign in error:', error);
-        return { error };
+    // Implement retry logic for authentication
+    const maxRetries = 3;
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          console.log(`Sign-in attempt ${attempt}/${maxRetries}`);
+          // Add a small delay between retries
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+        
+        // Try login with Supabase
+        const result = await supabase.auth.signInWithPassword({ email, password });
+        
+        if (result.error) {
+          console.error(`Sign-in error on attempt ${attempt}:`, result.error);
+          lastError = result.error;
+          
+          // If not the last attempt, continue to next retry
+          if (attempt < maxRetries) continue;
+        } else {
+          // Login successful - update IP if provided
+          if (result.data.user && ipAddress) {
+            await updateUserIp(result.data.user.id, ipAddress);
+          }
+          
+          // Return success
+          return { error: null };
+        }
+      } catch (err) {
+        console.error(`Exception on sign-in attempt ${attempt}:`, err);
+        lastError = err;
+        
+        // If not the last attempt, continue to next retry
+        if (attempt < maxRetries) continue;
       }
-      
-      // If login was successful and we have an IP address, update it
-      if (data.user && ipAddress) {
-        logger.info(`Login successful, updating IP for user ${data.user.id}`);
-        await updateUserIp(data.user.id, ipAddress);
-      }
-      
-      return { error: null };
-    } catch (e: any) {
-      logger.error('Unexpected error during sign in:', e);
-      return { error: e };
     }
+    
+    // If we got here, all attempts failed
+    console.error('All sign-in attempts failed');
+    return { error: lastError };
   };
 
   const signUp = async (email: string, password: string) => {
-    try {
-      logger.info(`Attempting to sign up user: ${email}`);
-      
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      
-      if (error) {
-        logger.error('Sign up error:', error);
-      } else {
-        logger.info('Sign up successful');
+    const { data, error } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`
       }
-      
-      return { data, error };
-    } catch (e: any) {
-      logger.error('Unexpected error during sign up:', e);
-      return { data: null, error: e };
-    }
+    });
+    return { data, error };
   };
 
   const signOut = async () => {
-    try {
-      logger.info('Signing out user');
-      await supabase.auth.signOut();
-      logger.info('Sign out successful');
-    } catch (e) {
-      logger.error('Error during sign out:', e);
-    }
+    await supabase.auth.signOut();
   };
 
   const resetPassword = async (email: string) => {
-    try {
-      logger.info(`Resetting password for: ${email}`);
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
-      });
-      
-      if (error) {
-        logger.error('Reset password error:', error);
-      } else {
-        logger.info('Reset password email sent successfully');
-      }
-      
-      return { error };
-    } catch (e: any) {
-      logger.error('Unexpected error during password reset:', e);
-      return { error: e };
-    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+    return { error };
   };
 
   return (
