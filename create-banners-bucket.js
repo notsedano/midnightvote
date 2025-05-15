@@ -4,11 +4,22 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// ================ EDIT THESE VALUES ================
-// Find these in your Supabase dashboard under Project Settings > API
-const SUPABASE_URL = process.env.SUPABASE_URL || 'your-project-id.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'your-service-role-key'; // Use service key, not anon key
-// ===================================================
+// Import credentials from config file (create this file with your credentials)
+// If the import fails, we'll fall back to environment variables or defaults
+let SUPABASE_URL = 'your-project-id.supabase.co';
+let SUPABASE_SERVICE_KEY = 'your-service-role-key';
+
+try {
+  const config = await import('./test-config.js');
+  SUPABASE_URL = config.SUPABASE_URL;
+  SUPABASE_SERVICE_KEY = config.SUPABASE_SERVICE_KEY;
+  console.log('Using credentials from test-config.js');
+} catch (error) {
+  // Use environment variables as fallback
+  SUPABASE_URL = process.env.SUPABASE_URL || SUPABASE_URL;
+  SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || SUPABASE_SERVICE_KEY;
+  console.log('Using credentials from environment variables or defaults');
+}
 
 const bucketName = 'banners';
 const bucketIsPublic = true; // Makes bucket publicly accessible
@@ -16,7 +27,7 @@ const bucketIsPublic = true; // Makes bucket publicly accessible
 async function createBucket() {
   // Validate credentials
   if (SUPABASE_URL === 'your-project-id.supabase.co' || SUPABASE_SERVICE_KEY === 'your-service-role-key') {
-    console.error('\n❌ ERROR: Please edit this file to add your Supabase credentials.');
+    console.error('\n❌ ERROR: Please edit test-config.js or provide environment variables with your Supabase credentials.');
     console.error('You can find them in your Supabase dashboard under Project Settings > API');
     console.error('The service role key is required (not the anon key)\n');
     return;

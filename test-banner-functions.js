@@ -4,15 +4,29 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Get your Supabase URL and anon key from environment or hard-code them here
-const SUPABASE_URL = process.env.SUPABASE_URL || 'your-project-id.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'your-anon-key';
+// Import credentials from config file (create this file with your credentials)
+// If the import fails, we'll fall back to environment variables or defaults
+let SUPABASE_URL = 'your-project-id.supabase.co';
+let SUPABASE_ANON_KEY = 'your-anon-key';
+
+try {
+  const config = await import('./test-config.js');
+  SUPABASE_URL = config.SUPABASE_URL;
+  SUPABASE_ANON_KEY = config.SUPABASE_ANON_KEY;
+  console.log('Using credentials from test-config.js');
+} catch (error) {
+  // Use environment variables as fallback
+  SUPABASE_URL = process.env.SUPABASE_URL || SUPABASE_URL;
+  SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+  console.log('Using credentials from environment variables or defaults');
+}
 
 // Initialize Supabase client
 const supabase = createClient(`https://${SUPABASE_URL}`, SUPABASE_ANON_KEY);
 
 async function testBannerFunctions() {
   console.log('=== Testing Banner Functions ===\n');
+  console.log(`Using Supabase URL: ${SUPABASE_URL}`);
   
   // Step 1: Test site_settings table access
   try {

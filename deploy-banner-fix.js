@@ -12,13 +12,29 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// =========== CONFIGURATION ===========
-// Get from environment or edit directly
-const SUPABASE_URL = process.env.SUPABASE_URL || 'your-project-id.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'your-service-role-key';
-const VERCEL_TOKEN = process.env.VERCEL_TOKEN; // Optional, for automatic Vercel deployment
-const PROJECT_ID = process.env.VERCEL_PROJECT_ID; // Optional, for automatic Vercel deployment
-// ====================================
+// Import credentials from config file (create this file with your credentials)
+// If the import fails, we'll fall back to environment variables or defaults
+let SUPABASE_URL = 'your-project-id.supabase.co';
+let SUPABASE_SERVICE_KEY = 'your-service-role-key';
+let VERCEL_TOKEN = undefined;
+let PROJECT_ID = undefined;
+
+try {
+  const config = await import('./test-config.js');
+  SUPABASE_URL = config.SUPABASE_URL;
+  SUPABASE_SERVICE_KEY = config.SUPABASE_SERVICE_KEY;
+  // Optional values
+  VERCEL_TOKEN = config.VERCEL_TOKEN;
+  PROJECT_ID = config.PROJECT_ID;
+  console.log('Using credentials from test-config.js');
+} catch (error) {
+  // Use environment variables as fallback
+  SUPABASE_URL = process.env.SUPABASE_URL || SUPABASE_URL;
+  SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || SUPABASE_SERVICE_KEY;
+  VERCEL_TOKEN = process.env.VERCEL_TOKEN;
+  PROJECT_ID = process.env.VERCEL_PROJECT_ID;
+  console.log('Using credentials from environment variables or defaults');
+}
 
 const bucketName = 'banners';
 const sqlFilePath = path.join(__dirname, 'fix-banner-functions.sql');
@@ -40,8 +56,8 @@ async function runDeployment() {
   
   // Validate credentials
   if (SUPABASE_URL === 'your-project-id.supabase.co' || SUPABASE_SERVICE_KEY === 'your-service-role-key') {
-    console.error(`${colors.bright}${colors.red}ERROR: Please provide your Supabase credentials${colors.reset}`);
-    console.error('Edit this file or set the SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables');
+    console.error(`${colors.bright}${colors.red}ERROR: Please edit test-config.js or provide environment variables with your Supabase credentials.${colors.reset}`);
+    console.error('You can find them in your Supabase dashboard under Project Settings > API');
     return;
   }
 
