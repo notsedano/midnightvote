@@ -2,7 +2,7 @@
 // Creates the necessary storage bucket for banner images
 // Usage: Add your Supabase credentials below and run with node create-banners-bucket.js
 
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 // ================ EDIT THESE VALUES ================
 // Find these in your Supabase dashboard under Project Settings > API

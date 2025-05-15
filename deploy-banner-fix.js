@@ -2,10 +2,15 @@
 // This script automates the deployment of the banner fix
 // Usage: node deploy-banner-fix.js
 
-const { createClient } = require('@supabase/supabase-js');
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+
+// Get current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // =========== CONFIGURATION ===========
 // Get from environment or edit directly

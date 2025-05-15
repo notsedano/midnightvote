@@ -2,7 +2,7 @@
 // This script tests if the banner functions are working correctly
 // Run with: node test-banner-functions.js
 
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 // Get your Supabase URL and anon key from environment or hard-code them here
 const SUPABASE_URL = process.env.SUPABASE_URL || 'your-project-id.supabase.co';
