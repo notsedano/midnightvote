@@ -9,9 +9,7 @@ console.log("Supabase initialization:", {
   hasUrl: !!supabaseUrl, 
   hasKey: !!supabaseAnonKey,
   urlLength: supabaseUrl?.length,
-  keyLength: supabaseAnonKey?.length,
-  // Show first few characters for debugging
-  urlStart: supabaseUrl?.substring(0, 15) + "..."
+  keyLength: supabaseAnonKey?.length
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -28,32 +26,13 @@ if (normalizedSupabaseUrl) {
   if (!normalizedSupabaseUrl.startsWith('https://')) {
     normalizedSupabaseUrl = 'https://' + normalizedSupabaseUrl;
   }
-  
-  console.log("Normalized Supabase URL:", normalizedSupabaseUrl);
 }
 
-// Create client with specific options for debugging
+// Create a simpler client configuration without custom fetch
 export const supabase = createClient<Database>(normalizedSupabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true
-  },
-  global: {
-    fetch: (...args) => {
-      // Add custom fetch options for CORS
-      const [url, options = {}] = args;
-      const customOptions = {
-        ...options,
-        headers: {
-          ...options.headers,
-          'Cache-Control': 'no-store',
-        },
-        mode: 'cors' as RequestMode,
-        credentials: 'include' as RequestCredentials,
-      };
-      console.log("Fetch request:", { url, customOptions });
-      return fetch(url, customOptions);
-    }
   }
 });

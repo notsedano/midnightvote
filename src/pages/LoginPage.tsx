@@ -119,42 +119,43 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     
-    try {
-      console.log("Login attempt for:", email);
-      
-      // Try direct API test first
+    // Basic retry mechanism
+    const maxRetries = 3;
+    let lastError = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log("Testing direct Supabase connection...");
-        const { data, error: pingError } = await supabase.from('profiles').select('count').limit(1);
-        console.log("Supabase connection test:", { success: !pingError, data, error: pingError?.message });
-        
-        if (pingError) {
-          console.error("Supabase connection test failed:", pingError);
+        if (attempt > 1) {
+          console.log(`Login attempt ${attempt}/${maxRetries}`);
+          // Add a small delay between retries
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-      } catch (testError: any) {
-        console.error("Connection test error:", testError.message);
+        
+        // Try login
+        const { error } = await signIn(email, password, userIp);
+        
+        if (error) {
+          console.error("Login error:", error);
+          lastError = error;
+          continue; // Try again
+        }
+        
+        // Success
+        navigate('/vote');
+        return;
+      } catch (err) {
+        console.error(`Error on attempt ${attempt}:`, err);
+        lastError = err;
+        
+        // If not the last attempt, continue to next retry
+        if (attempt < maxRetries) continue;
       }
-      
-      // Pass the IP address to signIn
-      const { error } = await signIn(email, password, userIp);
-      
-      if (error) {
-        console.error("Login API error:", error);
-        throw error;
-      }
-      
-      navigate('/vote');
-    } catch (err: any) {
-      console.error('Login error details:', {
-        message: err.message,
-        status: err.status,
-        name: err.name,
-        stack: err.stack
-      });
-      setError(err.message || 'Failed to sign in. Please check console for details.');
-    } finally {
-      setLoading(false);
     }
+    
+    // If we got here, all attempts failed
+    console.error('All login attempts failed');
+    setError(lastError?.message || 'Failed to sign in after multiple attempts');
+    setLoading(false);
   };
 
   return (
