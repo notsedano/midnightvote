@@ -119,43 +119,83 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     
-    // Basic retry mechanism
-    const maxRetries = 3;
-    let lastError = null;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log("Login attempt for:", email);
+      
+      // Try a direct fetch to a simpler endpoint first
+      // This is a workaround for browsers with CORS issues
       try {
-        if (attempt > 1) {
-          console.log(`Login attempt ${attempt}/${maxRetries}`);
-          // Add a small delay between retries
-          await new Promise(resolve => setTimeout(resolve, 500));
+        const response = await fetch(`${window.location.origin}/api/auth-proxy`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log("Auth proxy login success");
+          navigate('/vote');
+          return;
         }
-        
-        // Try login
-        const { error } = await signIn(email, password, userIp);
-        
-        if (error) {
-          console.error("Login error:", error);
-          lastError = error;
-          continue; // Try again
-        }
-        
-        // Success
-        navigate('/vote');
-        return;
-      } catch (err) {
-        console.error(`Error on attempt ${attempt}:`, err);
-        lastError = err;
-        
-        // If not the last attempt, continue to next retry
-        if (attempt < maxRetries) continue;
+      } catch (proxyError) {
+        console.error("Auth proxy failed:", proxyError);
       }
+      
+      // Fall back to standard Supabase Auth
+      console.log("Falling back to standard authentication");
+      
+      // Try simplified direct authentication with fewer headers and options
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        
+        const baseUrl = `https://${supabaseUrl}/auth/v1/token?grant_type=password`;
+        const headers = {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+        };
+        
+        const response = await fetch(baseUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ 
+            email, 
+            password,
+            gotrue_meta_security: {}
+          }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Direct login success");
+          
+          // Manually set auth session
+          localStorage.setItem('sb-refresh-token', data.refresh_token);
+          localStorage.setItem('sb-access-token', data.access_token);
+          
+          // Reload the page to pick up the auth changes
+          window.location.href = '/vote';
+          return;
+        } else {
+          throw new Error(`Status ${response.status}: ${await response.text()}`);
+        }
+      } catch (directError) {
+        console.error("Direct fetch login failed:", directError);
+      }
+      
+      // As a last resort, try the standard Supabase Auth login
+      const { error } = await signIn(email, password, userIp);
+      if (error) throw error;
+      
+      navigate('/vote');
+    } catch (err: any) {
+      console.error('Login error details:', err);
+      setError(err.message || 'Failed to sign in. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    
-    // If we got here, all attempts failed
-    console.error('All login attempts failed');
-    setError(lastError?.message || 'Failed to sign in after multiple attempts');
-    setLoading(false);
   };
 
   return (
