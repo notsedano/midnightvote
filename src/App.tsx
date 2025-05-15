@@ -13,6 +13,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
 import DebugPage from './pages/DebugPage';
 import EmergencyPage from './pages/EmergencyPage';
+import TestBucket from './pages/TestBucket';
 
 function App() {
   return (
@@ -72,6 +73,8 @@ function App() {
                 <EmergencyPage />
               </ProtectedRoute>
             } />
+            
+            <Route path="/test-bucket" element={<TestBucket />} />
             
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/login" />} />

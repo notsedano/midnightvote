@@ -4,11 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 import Navigation from '../components/Navigation';
 import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
-import { Trash2, RefreshCw, PlusCircle, BarChart2, Users, Award, Terminal, Edit2, Youtube, X } from 'lucide-react';
+import { Trash2, RefreshCw, PlusCircle, BarChart2, Users, Award, Terminal, Edit2, Youtube, X, Upload } from 'lucide-react';
 import VoteChart from '../components/VoteChart';
 import { supabase } from '../lib/supabase';
 import IpTrackingPanel from '../components/IpTrackingPanel';
 import Footer from '../components/Footer';
+import { uploadImage, updateSiteSetting } from '../utils/storage';
 
 const AdminPage: React.FC = () => {
   const { isAdmin, user } = useAuth();
@@ -24,6 +25,14 @@ const AdminPage: React.FC = () => {
     name: '',
     genre: '',
     youtube_url: '',
+  });
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [bannerUploadError, setBannerUploadError] = useState<string | null>(null);
+  const [bannerUploadSuccess, setBannerUploadSuccess] = useState(false);
+  const [selectedBanner, setSelectedBanner] = useState<number>(1); // 1 or 2
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({
+    banner1: localStorage.getItem('login_banner1') || '',
+    banner2: localStorage.getItem('login_banner2') || ''
   });
   
   // Get voter count
@@ -421,6 +430,214 @@ const AdminPage: React.FC = () => {
                 No candidates found. Add a DJ to get started.
               </div>
             )}
+          </div>
+        </div>
+        
+        {/* Banner Upload Tool - Add at the bottom */}
+        <div className="p-6 bg-black border border-[#9ACD32]/30 rounded-md mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg text-[#9ACD32]">Banner Management</h2>
+          </div>
+          
+          {bannerUploadError && (
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-500 text-red-300 rounded-md">
+              <div className="font-bold mb-1">Error uploading banner:</div>
+              <div>{bannerUploadError}</div>
+              <div className="text-xs mt-2">
+                Try these troubleshooting steps:
+                <ul className="list-disc ml-4 mt-1">
+                  <li>Check browser console for detailed errors</li>
+                  <li>Ensure image is less than 2MB</li>
+                  <li>Try a different image format (PNG, JPG)</li>
+                  <li>Visit /test-bucket to diagnose storage issues</li>
+                </ul>
+              </div>
+              <button
+                className="mt-2 text-red-300 hover:text-red-100 text-sm"
+                onClick={() => setBannerUploadError(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          
+          {bannerUploadSuccess && (
+            <div className="mb-4 p-3 bg-green-900/30 border border-green-500 text-green-300 rounded-md">
+              <div className="font-bold">Banner uploaded successfully!</div>
+              <div className="text-sm mt-1">
+                The banner has been uploaded and will appear on the login and register pages.
+                {localStorage.getItem(`login_banner${selectedBanner}`) && (
+                  <div className="mt-2">
+                    Banner URL: <span className="text-xs break-all">{localStorage.getItem(`login_banner${selectedBanner}`)}</span>
+                  </div>
+                )}
+              </div>
+              <button
+                className="mt-2 text-green-300 hover:text-green-100 text-sm"
+                onClick={() => setBannerUploadSuccess(false)}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+                <div className="flex flex-col space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#9ACD32]">Banner Selection</span>
+                  </div>
+                  
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => setSelectedBanner(1)}
+                      className={`px-4 py-2 border ${selectedBanner === 1 ? 'bg-[#9ACD32] text-black' : 'border-[#9ACD32]/50 text-[#9ACD32]'} rounded`}
+                    >
+                      Banner 1
+                    </button>
+                    <button
+                      onClick={() => setSelectedBanner(2)}
+                      className={`px-4 py-2 border ${selectedBanner === 2 ? 'bg-[#9ACD32] text-black' : 'border-[#9ACD32]/50 text-[#9ACD32]'} rounded`}
+                    >
+                      Banner 2
+                    </button>
+                  </div>
+                  
+                  <div className="text-xs text-gray-400">
+                    Select which banner position to update
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+                <div className="flex flex-col space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#9ACD32]">Upload Banner Image</span>
+                  </div>
+                  
+                  <label className="flex flex-col items-center justify-center border border-dashed border-[#9ACD32]/50 rounded-md h-32 cursor-pointer hover:bg-[#9ACD32]/10 transition-colors">
+                    <Upload size={24} className="text-[#9ACD32] mb-2" />
+                    <span className="text-sm text-[#9ACD32]">Click to upload image</span>
+                    <span className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 2MB</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        if (file.size > 2 * 1024 * 1024) {
+                          setBannerUploadError('File size exceeds 2MB limit');
+                          return;
+                        }
+                        
+                        setUploadingBanner(true);
+                        setBannerUploadError(null);
+                        setBannerUploadSuccess(false);
+                        
+                        try {
+                          // Generate a unique filename
+                          const fileExt = file.name.split('.').pop();
+                          const filePath = `banner${selectedBanner}_${Date.now()}.${fileExt}`;
+                          
+                          console.log("Starting banner upload process...");
+                          console.log(`File: ${file.name}, Size: ${file.size} bytes, Path: ${filePath}`);
+                          
+                          // Upload to Supabase Storage
+                          const { publicUrl, error: uploadError } = await uploadImage(file, 'banners', filePath);
+                          
+                          if (uploadError) {
+                            console.error("Upload error:", uploadError);
+                            throw uploadError;
+                          }
+                          
+                          if (!publicUrl) {
+                            console.error("No public URL returned");
+                            throw new Error('Failed to get public URL');
+                          }
+                          
+                          console.log("Upload successful, public URL:", publicUrl);
+                          
+                          // Update the site settings
+                          const settingKey = `login_banner${selectedBanner}`;
+                          console.log(`Updating site setting: ${settingKey}`);
+                          
+                          const { error: updateError } = await updateSiteSetting(settingKey, publicUrl);
+                            
+                          if (updateError) {
+                            console.error("Settings update error:", updateError);
+                            throw updateError;
+                          }
+                          
+                          // Update preview state to force re-render
+                          setPreviewUrls(prev => ({
+                            ...prev,
+                            [`banner${selectedBanner}`]: publicUrl
+                          }));
+                          
+                          console.log("Banner updated successfully");
+                          setBannerUploadSuccess(true);
+                        } catch (err: any) {
+                          console.error('Error uploading banner:', err);
+                          setBannerUploadError(err.message || 'Failed to upload banner. Check console for details.');
+                        } finally {
+                          setUploadingBanner(false);
+                        }
+                      }}
+                    />
+                  </label>
+                  
+                  {uploadingBanner && (
+                    <div className="text-center text-[#9ACD32]">
+                      <div className="animate-spin inline-block w-4 h-4 border-2 border-[#9ACD32] border-t-transparent rounded-full mr-2"></div>
+                      Uploading...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-[#9ACD32]">Preview</span>
+              </div>
+              
+              <div className="text-xs text-gray-400 mb-2">
+                Banner {selectedBanner} will appear in the {selectedBanner === 1 ? 'left' : 'right'} section on login and register pages
+              </div>
+              
+              <div className="h-64 border border-[#9ACD32]/30 rounded-md overflow-hidden">
+                {(() => {
+                  // Use state to trigger re-renders when banner URLs change
+                  const bannerUrl = previewUrls[`banner${selectedBanner}`] || localStorage.getItem(`login_banner${selectedBanner}`);
+                  
+                  if (bannerUrl) {
+                    return (
+                      <img 
+                        id={`banner-preview-${selectedBanner}`}
+                        src={bannerUrl} 
+                        alt={`Banner ${selectedBanner} preview`} 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => {
+                          console.error('Error loading banner preview:', e);
+                          // If image fails to load, show fallback
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    );
+                  }
+                  
+                  return (
+                    <div className="w-full h-full bg-black flex items-center justify-center text-[#9ACD32]/50 font-mono">
+                      &lt;/banner provision {selectedBanner}&gt;
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         </div>
       </div>

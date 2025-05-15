@@ -6,8 +6,6 @@ import { Mail, Lock, ArrowRight, Terminal } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
 import LoadingScreen from '../components/LoadingScreen';
-// Import the banner assets
-import bannerBase64 from '../assets/images/banner';
 
 const LoginPage: React.FC = () => {
   const { signIn, user } = useAuth();
@@ -15,6 +13,10 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bannerImages, setBannerImages] = useState({
+    banner1: '',
+    banner2: ''
+  });
   const [userIp, setUserIp] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,6 +27,63 @@ const LoginPage: React.FC = () => {
       navigate('/vote');
     }
   }, [user, navigate]);
+
+  // Fetch banner images on load
+  useEffect(() => {
+    const fetchBannerImages = async () => {
+      try {
+        // First check localStorage
+        const localBanner1 = localStorage.getItem('login_banner1');
+        const localBanner2 = localStorage.getItem('login_banner2');
+        
+        if (localBanner1 || localBanner2) {
+          // Use localStorage values if available
+          setBannerImages({
+            banner1: localBanner1 || '',
+            banner2: localBanner2 || ''
+          });
+        } else {
+          // Fall back to database if localStorage is empty
+          try {
+            const { data, error } = await supabase
+              .from('site_settings')
+              .select('key, value')
+              .in('key', ['login_banner1', 'login_banner2'])
+              .order('key');
+              
+            if (error) throw error;
+            
+            if (data && data.length > 0) {
+              const images = {
+                banner1: '',
+                banner2: ''
+              };
+              
+              data.forEach(item => {
+                if (item.key === 'login_banner1') {
+                  images.banner1 = item.value;
+                  // Also save to localStorage for future use
+                  if (item.value) localStorage.setItem('login_banner1', item.value);
+                } else if (item.key === 'login_banner2') {
+                  images.banner2 = item.value;
+                  // Also save to localStorage for future use
+                  if (item.value) localStorage.setItem('login_banner2', item.value);
+                }
+              });
+              
+              setBannerImages(images);
+            }
+          } catch (dbError) {
+            console.error('Error fetching banner images from database:', dbError);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching banner images:', error);
+      }
+    };
+    
+    fetchBannerImages();
+  }, []);
 
   // Fetch user's IP address
   useEffect(() => {
@@ -155,30 +214,38 @@ const LoginPage: React.FC = () => {
         {/* Left Column: Banner Image */}
         <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
           <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
-            <div className="w-full h-full bg-black flex flex-col font-mono">
-              {/* Terminal header */}
-              <div className="bg-[#9ACD32] text-black text-xs py-1 px-2 flex justify-between">
-                <span>DJ VOTING CONSOLE v1.0</span>
-                <div>
-                  <span>IP: {userIp || '...'}</span>
-                  <span className="ml-2">STATUS: ONLINE</span>
-                </div>
-              </div>
-              {/* Terminal content */}
-              <div className="flex-1 p-4 text-[#9ACD32] flex flex-col">
-                <div className="flex items-start">
-                  <span className="mr-2">&gt;_</span>
+            {bannerImages.banner1 ? (
+              <img 
+                src={bannerImages.banner1} 
+                alt="Left banner" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-black flex flex-col font-mono">
+                {/* Terminal header */}
+                <div className="bg-[#9ACD32] text-black text-xs py-1 px-2 flex justify-between">
+                  <span>DJ VOTING CONSOLE v1.0</span>
                   <div>
-                    <div className="text-2xl md:text-5xl font-bold mb-1">MIDNIGHT REBELS</div>
-                    <div className="text-xs md:text-sm font-thin">www.midnightrebels.com</div>
+                    <span>IP: {userIp || '...'}</span>
+                    <span className="ml-2">STATUS: ONLINE</span>
                   </div>
                 </div>
-                <div className="mt-auto text-xs flex justify-between">
-                  <span>SESSION: SECURED</span>
-                  <span>ACTIVE: ONLINE</span>
+                {/* Terminal content */}
+                <div className="flex-1 p-4 text-[#9ACD32] flex flex-col">
+                  <div className="flex items-start">
+                    <span className="mr-2">&gt;_</span>
+                    <div>
+                      <div className="text-2xl md:text-5xl font-bold mb-1">MIDNIGHT REBELS</div>
+                      <div className="text-xs md:text-sm font-thin">www.midnightrebels.com</div>
+                    </div>
+                  </div>
+                  <div className="mt-auto text-xs flex justify-between">
+                    <span>SESSION: SECURED</span>
+                    <span>ACTIVE: ONLINE</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
         
@@ -269,12 +336,23 @@ const LoginPage: React.FC = () => {
         {/* Right Column: Banner */}
         <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
           <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
-            {/* Static Banner Image */}
-            <img 
-              src={bannerBase64} 
-              alt="MIDNIGHT REBELS &FRIENDS DJ COMPETITION" 
-              className="w-full h-full object-cover"
-            />
+            {bannerImages.banner2 ? (
+              <img 
+                src={bannerImages.banner2} 
+                alt="Right banner" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-48 md:h-full bg-[#9ACD32] flex items-center justify-center text-black font-mono relative">
+                <div className="absolute inset-0 bg-black opacity-10 z-0" 
+                  style={{ 
+                    backgroundImage: 'linear-gradient(transparent 50%, rgba(0, 0, 0, 0.1) 50%)', 
+                    backgroundSize: '100% 4px'
+                  }}>
+                </div>
+                &lt;/banner provision 2&gt;
+              </div>
+            )}
           </div>
         </div>
       </div>
