@@ -1,67 +1,62 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Get environment variables
+let supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+// Enhanced URL normalization
+function normalizeSupabaseUrl(url: string): string {
+  if (!url) return '';
+  
+  // Remove any leading/trailing whitespace
+  url = url.trim();
+  
+  // Remove trailing slashes
+  url = url.replace(/\/+$/, '');
+  
+  // If it already has https://, keep it as is
+  if (url.startsWith('https://')) {
+    return url;
+  }
+  
+  // If it already starts with the project ID format, add https://
+  if (url.match(/^[a-z0-9-]+\.supabase\.co$/i)) {
+    return `https://${url}`;
+  }
+  
+  // If it's just the project ID, construct the full URL
+  if (url.match(/^[a-z0-9]+$/i)) {
+    return `https://${url}.supabase.co`;
+  }
+  
+  // Default case: assume it's a full domain without protocol
+  return `https://${url}`;
+}
+
+// Normalize URL
+supabaseUrl = normalizeSupabaseUrl(supabaseUrl);
 
 // Add debug logging
 console.log("Supabase initialization:", { 
-  hasUrl: !!supabaseUrl, 
+  finalUrl: supabaseUrl,
   hasKey: !!supabaseAnonKey,
-  urlLength: supabaseUrl?.length,
   keyLength: supabaseAnonKey?.length
 });
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing environment variables for Supabase connection');
+  console.error("Missing Supabase credentials. Authentication will not work properly.");
 }
 
-// Ensure URL has proper format
-let normalizedSupabaseUrl = supabaseUrl;
-if (normalizedSupabaseUrl) {
-  // Remove any trailing slashes
-  normalizedSupabaseUrl = normalizedSupabaseUrl.replace(/\/+$/, '');
-  
-  // Ensure URL starts with https://
-  if (!normalizedSupabaseUrl.startsWith('https://')) {
-    normalizedSupabaseUrl = 'https://' + normalizedSupabaseUrl;
-  }
-}
-
-// Create client with a very specific configuration to avoid CORS issues
-export const supabase = createClient<Database>(normalizedSupabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true
-  },
-  global: {
-    fetch: (...args) => {
-      // This is specifically to handle Safari's strict CORS implementation
-      const [url, options = {}] = args;
-      const headers = new Headers(options.headers || {});
-      
-      // Try without credentials mode for auth endpoints
-      const urlStr = url.toString();
-      const isAuthEndpoint = urlStr.includes('/auth/v1/');
-      
-      const customOptions = {
-        ...options,
-        headers,
-        mode: 'cors' as RequestMode,
-        credentials: isAuthEndpoint ? 'omit' as RequestCredentials : 'include' as RequestCredentials,
-      };
-      
-      return fetch(url, customOptions)
-        .then(response => {
-          // Log response info for debugging
-          console.log(`[Supabase Fetch] ${options.method || 'GET'} ${urlStr.split('?')[0]}: ${response.status}`);
-          return response;
-        })
-        .catch(error => {
-          console.error(`[Supabase Fetch Error] ${options.method || 'GET'} ${urlStr.split('?')[0]}:`, error);
-          throw error;
-        });
+// Create client with improved error handling
+export const supabase = createClient<Database>(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
     }
   }
-});
+);
