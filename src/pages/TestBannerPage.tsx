@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getAllBanners, setBannerUrl } from '../lib/bannerService';
+import { getAllBanners, setBannerUrl, clearBannerUrl, enableDefaultFallbacks, disableDefaultFallbacks } from '../lib/bannerService';
 import Footer from '../components/Footer';
 
 const TestBannerPage: React.FC = () => {
   const [banners, setBanners] = useState(getAllBanners());
   const [testUrl, setTestUrl] = useState('');
   const [testBannerKey, setTestBannerKey] = useState<'login1' | 'login2' | 'register'>('login1');
+  const [useFallbacks, setUseFallbacks] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error' | ''; message: string }>({
     type: '',
     message: ''
@@ -15,6 +16,18 @@ const TestBannerPage: React.FC = () => {
   useEffect(() => {
     document.title = 'Banner Test Page';
   }, []);
+
+  // Effect to handle fallback setting changes
+  useEffect(() => {
+    if (useFallbacks) {
+      enableDefaultFallbacks();
+    } else {
+      disableDefaultFallbacks();
+    }
+    
+    // Refresh banners when fallback setting changes
+    setBanners(getAllBanners());
+  }, [useFallbacks]);
 
   const handleQuickTest = () => {
     try {
@@ -68,6 +81,31 @@ const TestBannerPage: React.FC = () => {
             </div>
           )}
           
+          {/* Fallback toggle switch */}
+          <div className="mb-8 p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-[#9ACD32] font-mono text-lg">Default Fallback Images</h3>
+                <p className="text-gray-400 text-sm mt-1">
+                  When enabled, the system will use default placeholder images when no banner is set
+                </p>
+              </div>
+              
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={useFallbacks}
+                  onChange={() => setUseFallbacks(prev => !prev)}
+                  className="sr-only peer" 
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#9ACD32]"></div>
+                <span className="ms-3 text-sm font-medium text-gray-300">
+                  {useFallbacks ? 'Enabled' : 'Disabled'}
+                </span>
+              </label>
+            </div>
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             <div className="border border-[#9ACD32]/30 rounded-md p-4">
               <h2 className="text-[#9ACD32] font-mono text-xl mb-4">Current Banner Settings</h2>
@@ -82,7 +120,17 @@ const TestBannerPage: React.FC = () => {
                         src={banners.login1} 
                         alt="Login Banner 1" 
                         className="max-h-full max-w-full object-contain"
-                        onError={() => {
+                        onError={(e) => {
+                          console.error("Failed to load Login Banner 1 image:", banners.login1);
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLImageElement).parentElement;
+                          if (parent) {
+                            const errorMsg = document.createElement('div');
+                            errorMsg.className = "text-[#9ACD32]/50 font-mono";
+                            errorMsg.textContent = "Error loading image";
+                            parent.appendChild(errorMsg);
+                          }
+                          
                           setStatus({
                             type: 'error',
                             message: 'Failed to load Login Banner 1 image. URL might be invalid.'
@@ -110,7 +158,17 @@ const TestBannerPage: React.FC = () => {
                         src={banners.login2} 
                         alt="Login Banner 2" 
                         className="max-h-full max-w-full object-contain"
-                        onError={() => {
+                        onError={(e) => {
+                          console.error("Failed to load Login Banner 2 image:", banners.login2);
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLImageElement).parentElement;
+                          if (parent) {
+                            const errorMsg = document.createElement('div');
+                            errorMsg.className = "text-[#9ACD32]/50 font-mono";
+                            errorMsg.textContent = "Error loading image";
+                            parent.appendChild(errorMsg);
+                          }
+                          
                           setStatus({
                             type: 'error',
                             message: 'Failed to load Login Banner 2 image. URL might be invalid.'
@@ -138,7 +196,17 @@ const TestBannerPage: React.FC = () => {
                         src={banners.register} 
                         alt="Register Banner" 
                         className="max-h-full max-w-full object-contain"
-                        onError={() => {
+                        onError={(e) => {
+                          console.error("Failed to load Register Banner image:", banners.register);
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLImageElement).parentElement;
+                          if (parent) {
+                            const errorMsg = document.createElement('div');
+                            errorMsg.className = "text-[#9ACD32]/50 font-mono";
+                            errorMsg.textContent = "Error loading image";
+                            parent.appendChild(errorMsg);
+                          }
+                          
                           setStatus({
                             type: 'error',
                             message: 'Failed to load Register Banner image. URL might be invalid.'
@@ -247,12 +315,68 @@ const TestBannerPage: React.FC = () => {
               </div>
               
               <div className="mt-8 text-sm text-gray-400">
-                <p className="mb-2">Sample image URLs to test:</p>
+                <p className="mb-2">Sample image URLs to test (guaranteed to work with CORS):</p>
                 <ul className="list-disc pl-4 space-y-1">
-                  <li>https://picsum.photos/800/600 - Random image</li>
                   <li>https://placehold.co/600x400/9ACD32/000000?text=Banner</li>
-                  <li>https://source.unsplash.com/random/800x600 - Random Unsplash</li>
+                  <li>https://via.placeholder.com/800x600/000000/9ACD32?text=MidnightRebels</li>
+                  <li>https://raw.githubusercontent.com/notsedano/midnightvote/main/public/logo.png</li>
                 </ul>
+              </div>
+
+              {/* Quick actions */}
+              <div className="mt-6 pt-4 border-t border-[#9ACD32]/30">
+                <h3 className="text-white font-mono text-sm mb-2">Quick Fix Actions</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      const placeholderUrl = "https://placehold.co/600x400/9ACD32/000000?text=Banner";
+                      setTestUrl(placeholderUrl);
+                      setBannerUrl(testBannerKey, placeholderUrl);
+                      setBanners(getAllBanners());
+                      setStatus({
+                        type: 'success',
+                        message: `Applied placeholder banner to ${testBannerKey}`
+                      });
+                    }}
+                    className="bg-[#9ACD32]/20 text-[#9ACD32] px-3 py-1 rounded text-sm font-mono hover:bg-[#9ACD32]/40"
+                  >
+                    Apply Placeholder Banner
+                  </button>
+                  <button
+                    onClick={() => {
+                      // Log detailed information to help debug
+                      console.log("Current banner settings:", getAllBanners());
+                      try {
+                        const img = new Image();
+                        img.onload = () => console.log("Test image loads successfully");
+                        img.onerror = (e) => console.error("Test image failed to load:", e);
+                        img.src = "https://placehold.co/600x400/9ACD32/000000?text=Test";
+                      } catch (err) {
+                        console.error("Image test error:", err);
+                      }
+                      setStatus({
+                        type: 'success',
+                        message: 'Diagnostics logged to console (Press F12 to view)'
+                      });
+                    }}
+                    className="bg-[#9ACD32]/20 text-[#9ACD32] px-3 py-1 rounded text-sm font-mono hover:bg-[#9ACD32]/40"
+                  >
+                    Run Diagnostics
+                  </button>
+                  <button
+                    onClick={() => {
+                      clearBannerUrl(testBannerKey);
+                      setBanners(getAllBanners());
+                      setStatus({
+                        type: 'success',
+                        message: `Cleared ${testBannerKey} banner!`
+                      });
+                    }}
+                    className="bg-red-900/30 text-red-300 px-3 py-1 rounded text-sm font-mono hover:bg-red-900/50"
+                  >
+                    Clear Selected Banner
+                  </button>
+                </div>
               </div>
             </div>
           </div>

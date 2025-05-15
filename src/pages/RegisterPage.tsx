@@ -185,11 +185,29 @@ const RegisterPage: React.FC = () => {
         {/* Banner */}
         <div className="w-full border border-[#9ACD32] bg-[#9ACD32]/10 p-6 text-center font-mono text-[#9ACD32] relative">
           {bannerUrl ? (
-            <img 
-              src={bannerUrl} 
-              alt="Register banner" 
-              className="w-full h-full object-cover absolute inset-0"
-            />
+            <>
+              <img 
+                src={bannerUrl} 
+                alt="Register banner" 
+                className="w-full h-full object-cover absolute inset-0"
+                onError={(e) => {
+                  console.error("Error loading register banner:", bannerUrl);
+                  // Set the display to none instead of removing the element
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  // Show error message
+                  const parent = (e.target as HTMLImageElement).parentElement;
+                  if (parent) {
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-[#9ACD32] text-xs font-mono";
+                    errorMsg.textContent = "Image failed to load - Check URL";
+                    parent.appendChild(errorMsg);
+                  }
+                }}
+              />
+              <div className="relative z-10 text-white bg-black bg-opacity-50 p-2 inline-block">
+                MIDNIGHT REBELS &FRIENDS
+              </div>
+            </>
           ) : (
             <>&lt;/banner provision 2&gt;</>
           )}

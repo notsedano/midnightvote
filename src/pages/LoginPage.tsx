@@ -168,11 +168,34 @@ const LoginPage: React.FC = () => {
         <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
           <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
             {bannerImages.banner1 ? (
-              <img 
-                src={bannerImages.banner1} 
-                alt="Left banner" 
-                className="w-full h-full object-cover"
-              />
+              <>
+                <img 
+                  src={bannerImages.banner1} 
+                  alt="Left banner" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error("Error loading banner 1:", bannerImages.banner1);
+                    // Set the display to none instead of removing the element
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    // We'll fallback to the default content
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-[#9ACD32] text-xs font-mono" 
+                  style={{display: 'none'}} // Hidden by default, will be shown by JavaScript on error
+                  ref={(el) => {
+                    if (el) {
+                      const img = el.previousSibling as HTMLImageElement;
+                      if (img) {
+                        img.onerror = () => {
+                          el.style.display = 'flex';
+                        };
+                      }
+                    }
+                  }}
+                >
+                  Image failed to load - Check URL
+                </div>
+              </>
             ) : (
               <div className="w-full h-full bg-black flex flex-col font-mono">
                 {/* Terminal header */}
@@ -290,11 +313,34 @@ const LoginPage: React.FC = () => {
         <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
           <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
             {bannerImages.banner2 ? (
-              <img 
-                src={bannerImages.banner2} 
-                alt="Right banner" 
-                className="w-full h-full object-cover"
-              />
+              <>
+                <img 
+                  src={bannerImages.banner2} 
+                  alt="Right banner" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error("Error loading banner 2:", bannerImages.banner2);
+                    // Set the display to none instead of removing the element
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    // We'll fallback to the default content
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-[#9ACD32] text-xs font-mono" 
+                  style={{display: 'none'}} // Hidden by default, will be shown by JavaScript on error
+                  ref={(el) => {
+                    if (el) {
+                      const img = el.previousSibling as HTMLImageElement;
+                      if (img) {
+                        img.onerror = () => {
+                          el.style.display = 'flex';
+                        };
+                      }
+                    }
+                  }}
+                >
+                  Image failed to load - Check URL
+                </div>
+              </>
             ) : (
               <div className="w-full h-48 md:h-full bg-[#9ACD32] flex items-center justify-center text-black font-mono relative">
                 <div className="absolute inset-0 bg-black opacity-10 z-0" 

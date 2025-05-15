@@ -3,10 +3,13 @@
 
 // Default banners that can be used as fallbacks if no URLs are set
 const DEFAULT_BANNERS = {
-  login1: '', // Left login banner
-  login2: '', // Right login banner
-  register: '', // Register page banner
+  login1: 'https://placehold.co/800x600/9ACD32/000000?text=MIDNIGHT+REBELS', // Left login banner
+  login2: 'https://placehold.co/800x600/000000/9ACD32?text=DJ+COMPETITION', // Right login banner
+  register: 'https://placehold.co/1200x400/9ACD32/000000?text=REGISTER', // Register page banner
 };
+
+// Flag to enable default fallback images
+let useDefaultFallbacks = false;
 
 // LocalStorage keys for the banners
 const STORAGE_KEYS = {
@@ -17,7 +20,20 @@ const STORAGE_KEYS = {
 
 // Get banner URL from localStorage
 export const getBannerUrl = (bannerKey: keyof typeof STORAGE_KEYS): string => {
-  return localStorage.getItem(STORAGE_KEYS[bannerKey]) || DEFAULT_BANNERS[bannerKey];
+  const storedUrl = localStorage.getItem(STORAGE_KEYS[bannerKey]);
+  
+  // If there's a stored URL, use it
+  if (storedUrl) {
+    return storedUrl;
+  }
+  
+  // If fallbacks are enabled and no stored URL is found, use the default
+  if (useDefaultFallbacks) {
+    return DEFAULT_BANNERS[bannerKey];
+  }
+  
+  // Otherwise return empty string (behavior from before)
+  return '';
 };
 
 // Set banner URL and save to localStorage
@@ -44,4 +60,21 @@ export const getAllBanners = (): Record<keyof typeof STORAGE_KEYS, string> => {
     login2: getBannerUrl('login2'),
     register: getBannerUrl('register'),
   };
+};
+
+// Enable default fallback images
+export const enableDefaultFallbacks = (): void => {
+  useDefaultFallbacks = true;
+};
+
+// Disable default fallback images
+export const disableDefaultFallbacks = (): void => {
+  useDefaultFallbacks = false;
+};
+
+// Check if any banners are set
+export const hasAnyBanners = (): boolean => {
+  return Object.keys(STORAGE_KEYS).some(key => 
+    localStorage.getItem(STORAGE_KEYS[key as keyof typeof STORAGE_KEYS])
+  );
 }; 
