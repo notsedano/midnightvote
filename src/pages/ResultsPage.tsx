@@ -67,12 +67,25 @@ const ResultsPage: React.FC = () => {
 
   return (
     <Layout>
+      {/* Add the banner image at the top */}
+      {bannerImage ? (
+        <div className="w-full bg-black relative">
+          <div className="w-full border-b border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
+            <img 
+              src={bannerImage} 
+              alt="Banner" 
+              className="w-full h-40 object-cover"
+            />
+          </div>
+        </div>
+      ) : null}
+      
       <Banner 
         title="VOTING RESULTS"
         subtitle="REAL-TIME STATISTICS"
       />
       
-      <div className="container mx-auto px-4 pb-32">
+      <div className="container mx-auto px-4">
         <div className="border border-[#9ACD32] bg-black p-3 mb-6">
           <div className="border-b border-[#9ACD32]/50 pb-2 mb-4 flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -113,24 +126,6 @@ const ResultsPage: React.FC = () => {
       </div>
       
       <Navigation />
-      
-      {/* Fixed Footer Banner */}
-      {bannerImage ? (
-        <div className="fixed bottom-0 left-0 w-full bg-black z-50">
-          <div className="w-full border-t border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
-            <img 
-              src={bannerImage} 
-              alt="Banner" 
-              className="w-full h-24 object-cover opacity-90"
-            />
-          </div>
-          <div className="w-full bg-black border-t border-[#9ACD32]/50 text-center py-2">
-            <a href="https://midnightrebels.com" target="_blank" rel="noopener noreferrer" className="text-[#9ACD32] font-mono text-xs font-bold hover:text-white transition-colors">
-              MIDNIGHT REBELS © 2023 ALL RIGHTS RESERVED
-            </a>
-          </div>
-        </div>
-      ) : null}
     </Layout>
   );
 };

@@ -4,8 +4,6 @@ import Navigation from '../components/Navigation';
 import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
 import { Database, Hash, Clock, User, Terminal } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 
 type Transaction = {
   id: string;
@@ -19,66 +17,6 @@ const BlockExplorerPage: React.FC = () => {
   const { votes, candidates, isLoading } = useVoting();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
-  const [bannerImage, setBannerImage] = useState<string>('');
-  const location = useLocation();
-  
-  // Parse URL parameters to find transaction ID
-  useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const txId = searchParams.get('tx');
-    
-    if (txId && transactions.length > 0) {
-      const tx = transactions.find(t => t.id === txId);
-      if (tx) {
-        setSelectedTx(tx);
-        // Scroll to transaction details
-        setTimeout(() => {
-          const detailsElement = document.getElementById('transaction-details');
-          if (detailsElement) {
-            detailsElement.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 500);
-      }
-    }
-  }, [location.search, transactions]);
-  
-  // Fetch banner image on load
-  useEffect(() => {
-    const fetchBannerImage = async () => {
-      try {
-        // First check localStorage
-        const localBanner = localStorage.getItem('login_banner1');
-        
-        if (localBanner) {
-          // Use localStorage value if available
-          setBannerImage(localBanner);
-        } else {
-          // Fall back to database if localStorage is empty
-          try {
-            const { data, error } = await supabase
-              .from('site_settings')
-              .select('value')
-              .eq('key', 'login_banner1')
-              .single();
-              
-            if (error) throw error;
-            
-            if (data?.value) {
-              setBannerImage(data.value);
-              // Also save to localStorage for future use
-              localStorage.setItem('login_banner1', data.value);
-            }
-          } catch (dbError) {
-            console.error('Error fetching banner image from database:', dbError);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching banner image:', error);
-      }
-    };
-    
-    fetchBannerImage();
-  }, []);
   
   // Process votes into transactions
   useEffect(() => {
@@ -95,26 +33,15 @@ const BlockExplorerPage: React.FC = () => {
       }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
       setTransactions(txs);
-      
-      // Check if we need to select a transaction based on URL
-      const searchParams = new URLSearchParams(location.search);
-      const txId = searchParams.get('tx');
-      
-      if (txId) {
-        const tx = txs.find(t => t.id === txId);
-        if (tx) {
-          setSelectedTx(tx);
-        }
-      }
     }
-  }, [votes, candidates, location.search]);
+  }, [votes, candidates]);
   
   if (isLoading) {
     return <LoadingScreen />;
   }
 
   return (
-    <div className="min-h-screen bg-black pb-36 font-mono">
+    <div className="min-h-screen bg-black pb-20 font-mono">
       <Banner 
         title="VOTE TRANSACTION EXPLORER"
         subtitle="BLOCKCHAIN ANALYSIS INTERFACE"
@@ -145,7 +72,7 @@ const BlockExplorerPage: React.FC = () => {
           </div>
           
           {/* Selected Transaction */}
-          <div id="transaction-details" className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+          <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg text-[#9ACD32]">Transaction Details</h2>
               <Database size={16} className="text-[#9ACD32]" />
@@ -232,24 +159,6 @@ const BlockExplorerPage: React.FC = () => {
       </div>
       
       <Navigation />
-      
-      {/* Fixed Footer Banner */}
-      {bannerImage ? (
-        <div className="fixed bottom-0 left-0 w-full bg-black z-50">
-          <div className="w-full border-t border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
-            <img 
-              src={bannerImage} 
-              alt="Banner" 
-              className="w-full h-24 object-cover opacity-90"
-            />
-          </div>
-          <div className="w-full bg-black border-t border-[#9ACD32]/50 text-center py-2">
-            <a href="https://midnightrebels.com" target="_blank" rel="noopener noreferrer" className="text-[#9ACD32] font-mono text-xs font-bold hover:text-white transition-colors">
-              MIDNIGHT REBELS © 2023 ALL RIGHTS RESERVED
-            </a>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 };

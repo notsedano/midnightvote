@@ -82,7 +82,20 @@ const ProfilePage: React.FC = () => {
   const formattedEmail = user.email ? (user.email.substring(0, 16) + (user.email.length > 16 ? '...' : '')) : '';
 
   return (
-    <div className="min-h-screen bg-black pb-36 font-mono">
+    <div className="min-h-screen bg-black pb-20 font-mono">
+      {/* Add the banner image at the top */}
+      {bannerImage ? (
+        <div className="w-full bg-black relative">
+          <div className="w-full border-b border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
+            <img 
+              src={bannerImage} 
+              alt="Banner" 
+              className="w-full h-40 object-cover"
+            />
+          </div>
+        </div>
+      ) : null}
+      
       <Banner 
         title="USER PROFILE" 
         subtitle="ACCOUNT STATUS AND VOTING RECORD"
@@ -188,24 +201,6 @@ const ProfilePage: React.FC = () => {
       </div>
       
       <Navigation />
-      
-      {/* Fixed Footer Banner */}
-      {bannerImage ? (
-        <div className="fixed bottom-0 left-0 w-full bg-black z-50">
-          <div className="w-full border-t border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
-            <img 
-              src={bannerImage} 
-              alt="Banner" 
-              className="w-full h-24 object-cover opacity-90"
-            />
-          </div>
-          <div className="w-full bg-black border-t border-[#9ACD32]/50 text-center py-2">
-            <a href="https://midnightrebels.com" target="_blank" rel="noopener noreferrer" className="text-[#9ACD32] font-mono text-xs font-bold hover:text-white transition-colors">
-              MIDNIGHT REBELS © 2023 ALL RIGHTS RESERVED
-            </a>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 };
