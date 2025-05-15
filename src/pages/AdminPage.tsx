@@ -384,16 +384,6 @@ const AdminPage: React.FC = () => {
                 <h3 className="text-sm text-[#9ACD32] mb-2">Select Banner Position</h3>
                 <div className="flex space-x-4">
                   <button
-                    onClick={() => setSelectedBanner('banner1')}
-                    className={`px-3 py-2 rounded-md text-xs ${
-                      selectedBanner === 'banner1' 
-                        ? 'bg-[#9ACD32] text-black' 
-                        : 'bg-[#9ACD32]/10 border border-[#9ACD32]/30 text-[#9ACD32]'
-                    }`}
-                  >
-                    Left Banner
-                  </button>
-                  <button
                     onClick={() => setSelectedBanner('banner2')}
                     className={`px-3 py-2 rounded-md text-xs ${
                       selectedBanner === 'banner2' 
@@ -434,24 +424,17 @@ const AdminPage: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="p-2 border border-[#9ACD32]/30 rounded-md">
-              <h3 className="text-sm text-gray-400 mb-2">Left Banner</h3>
+              <h3 className="text-sm text-gray-400 mb-2">Ad Banner</h3>
               <div className="aspect-[3/4] bg-dark-900 border border-[#9ACD32]/20 rounded flex items-center justify-center overflow-hidden relative">
                 {bannerImages.banner1 ? (
                   <>
                     <img 
                       src={bannerImages.banner1} 
-                      alt="Left login banner" 
+                      alt="Ad banner" 
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-60 transition-opacity flex items-center justify-center opacity-0 hover:opacity-100">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => setSelectedBanner('banner1')}
-                          className="bg-[#9ACD32]/20 hover:bg-[#9ACD32]/40 text-[#9ACD32] p-2 rounded-md"
-                          title="Change image"
-                        >
-                          <Upload size={18} />
-                        </button>
+                      <div className="flex">
                         <button
                           onClick={() => {
                             if (confirm('Are you sure you want to delete this banner image?')) {
@@ -487,13 +470,7 @@ const AdminPage: React.FC = () => {
                 ) : (
                   <div className="text-gray-600 text-xs font-mono flex flex-col items-center">
                     <ImageIcon size={24} className="mb-2 opacity-50" />
-                    No image set
-                    <button
-                      onClick={() => setSelectedBanner('banner1')}
-                      className="mt-2 bg-[#9ACD32]/10 hover:bg-[#9ACD32]/20 text-[#9ACD32] px-3 py-1 rounded text-xs"
-                    >
-                      Set Image
-                    </button>
+                    <span className="text-center px-4">Ad banner content is managed by system admin</span>
                   </div>
                 )}
               </div>
@@ -716,7 +693,7 @@ const AdminPage: React.FC = () => {
                       <button 
                         type="button"
                         onClick={cancelEditing}
-                        className="bg-dark-800 text-gray-300 px-3 py-1 rounded mr-2 text-sm"
+                        className="bg-black border border-gray-600 text-gray-300 px-3 py-1 rounded mr-2 text-sm"
                       >
                         Cancel
                       </button>
@@ -730,32 +707,32 @@ const AdminPage: React.FC = () => {
                   </form>
                 ) : (
                   <div className="flex justify-between items-center">
-                <div>
+                    <div className="flex-1 pr-3">
                       <div className="flex items-center mb-1">
-                        <div className="text-white mr-2">{candidate.name}</div>
+                        <div className="text-white mr-2 text-sm font-medium truncate">{candidate.name}</div>
                         {candidate.youtube_url && (
-                          <Youtube size={14} className="text-[#9ACD32] opacity-70" />
+                          <Youtube size={14} className="text-[#9ACD32] opacity-70 flex-shrink-0" />
                         )}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-gray-400 truncate">
                         Genre: {candidate.genre || "Not set"} | Votes: {voteCounts[candidate.id] || 0}
                       </div>
-                </div>
-                    <div className="flex items-center">
+                    </div>
+                    <div className="flex items-center flex-shrink-0 ml-2">
                       <button 
                         onClick={() => startEditingCandidate(candidate.id)}
-                        className="text-[#9ACD32]/70 hover:text-[#9ACD32] transition duration-200 mr-2"
+                        className="text-[#9ACD32]/70 hover:text-[#9ACD32] transition duration-200 mr-2 p-1"
                         aria-label="Edit candidate"
                       >
                         <Edit2 size={16} />
                       </button>
-                <button 
-                  onClick={() => handleDeleteCandidate(candidate.id)}
-                  className="text-red-400 hover:text-red-300 transition duration-200"
-                  aria-label="Delete candidate"
-                >
+                      <button 
+                        onClick={() => handleDeleteCandidate(candidate.id)}
+                        className="text-red-400 hover:text-red-300 transition duration-200 p-1"
+                        aria-label="Delete candidate"
+                      >
                         <Trash2 size={16} />
-                </button>
+                      </button>
                     </div>
                   </div>
                 )}
