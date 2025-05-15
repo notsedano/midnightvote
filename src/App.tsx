@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { VotingProvider } from './contexts/VotingContext';
@@ -14,21 +14,8 @@ import AdminRoute from './components/AdminRoute';
 import DebugPage from './pages/DebugPage';
 import EmergencyPage from './pages/EmergencyPage';
 import TestBucket from './pages/TestBucket';
-import TestBannerPage from './pages/TestBannerPage';
-import { enableDefaultFallbacks, hasAnyBanners } from './lib/bannerService';
 
 function App() {
-  // Initialize banner fallbacks if no banners are set
-  useEffect(() => {
-    // If no banners are set in localStorage, enable fallbacks
-    if (!hasAnyBanners()) {
-      console.log("No banners found in localStorage, enabling default fallbacks");
-      enableDefaultFallbacks();
-    } else {
-      console.log("Banners found in localStorage, using those instead of fallbacks");
-    }
-  }, []);
-
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -88,7 +75,6 @@ function App() {
             } />
             
             <Route path="/test-bucket" element={<TestBucket />} />
-            <Route path="/test-banner" element={<TestBannerPage />} />
             
             {/* Fallback route */}
             <Route path="*" element={<Navigate to="/login" />} />

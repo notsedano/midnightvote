@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Terminal } from 'lucide-react';
-import { getBannerUrl } from '../lib/bannerService';
 import Layout from '../components/Layout';
 import Banner from '../components/Banner';
 import Button from '../components/Button';
@@ -15,7 +14,6 @@ const RegisterPage: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [bannerUrl, setBannerUrl] = useState('');
   
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -26,11 +24,6 @@ const RegisterPage: React.FC = () => {
       navigate('/vote');
     }
   }, [user, navigate]);
-
-  // Load banner URL on component mount
-  React.useEffect(() => {
-    setBannerUrl(getBannerUrl('register'));
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +100,7 @@ const RegisterPage: React.FC = () => {
               </p>
               <Link to="/login">
                 <Button variant="primary" fullWidth>
-                  Go to Login
+                Go to Login
                 </Button>
               </Link>
             </motion.div>
@@ -183,34 +176,8 @@ const RegisterPage: React.FC = () => {
         </div>
         
         {/* Banner */}
-        <div className="w-full border border-[#9ACD32] bg-[#9ACD32]/10 p-6 text-center font-mono text-[#9ACD32] relative">
-          {bannerUrl ? (
-            <>
-              <img 
-                src={bannerUrl} 
-                alt="Register banner" 
-                className="w-full h-full object-cover absolute inset-0"
-                onError={(e) => {
-                  console.error("Error loading register banner:", bannerUrl);
-                  // Set the display to none instead of removing the element
-                  (e.target as HTMLImageElement).style.display = 'none';
-                  // Show error message
-                  const parent = (e.target as HTMLImageElement).parentElement;
-                  if (parent) {
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-[#9ACD32] text-xs font-mono";
-                    errorMsg.textContent = "Image failed to load - Check URL";
-                    parent.appendChild(errorMsg);
-                  }
-                }}
-              />
-              <div className="relative z-10 text-white bg-black bg-opacity-50 p-2 inline-block">
-                MIDNIGHT REBELS &FRIENDS
-              </div>
-            </>
-          ) : (
-            <>&lt;/banner provision 2&gt;</>
-          )}
+        <div className="w-full border border-[#9ACD32] bg-[#9ACD32]/10 p-6 text-center font-mono text-[#9ACD32]">
+          &lt;/banner provision 2&gt;
         </div>
       </div>
     </Layout>

@@ -4,11 +4,12 @@ import { useAuth } from '../contexts/AuthContext';
 import Navigation from '../components/Navigation';
 import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
-import { Trash2, RefreshCw, PlusCircle, BarChart2, Users, Award, Terminal, Edit2, Youtube, X } from 'lucide-react';
+import { Trash2, RefreshCw, PlusCircle, BarChart2, Users, Award, Terminal, Edit2, Youtube, X, Link as LinkIcon } from 'lucide-react';
 import VoteChart from '../components/VoteChart';
 import { supabase } from '../lib/supabase';
 import IpTrackingPanel from '../components/IpTrackingPanel';
 import Footer from '../components/Footer';
+import { updateSiteSetting } from '../utils/storage';
 
 const AdminPage: React.FC = () => {
   const { isAdmin, user } = useAuth();
@@ -25,6 +26,14 @@ const AdminPage: React.FC = () => {
     genre: '',
     youtube_url: '',
   });
+  const [selectedBanner, setSelectedBanner] = useState<number>(1); // 1 or 2
+  const [bannerUrls, setBannerUrls] = useState<Record<string, string>>({
+    banner1: localStorage.getItem('login_banner1') || '',
+    banner2: localStorage.getItem('login_banner2') || ''
+  });
+  const [newBannerUrl, setNewBannerUrl] = useState<string>('');
+  const [bannerUpdateSuccess, setBannerUpdateSuccess] = useState(false);
+  const [bannerUpdateError, setBannerUpdateError] = useState<string | null>(null);
   
   // Get voter count
   useEffect(() => {
@@ -137,6 +146,52 @@ const AdminPage: React.FC = () => {
     } catch (err: any) {
       console.error('Error updating candidate:', err);
       setError(err.message || 'Failed to update candidate');
+    }
+  };
+
+  const handleBannerUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBannerUrl.trim()) {
+      setBannerUpdateError('Please enter a banner URL');
+      return;
+    }
+    
+    // Simple URL validation
+    try {
+      new URL(newBannerUrl);
+    } catch (e) {
+      setBannerUpdateError('Please enter a valid URL (must include http:// or https://)');
+      return;
+    }
+    
+    setBannerUpdateError(null);
+    
+    try {
+      const settingKey = `login_banner${selectedBanner}`;
+      console.log(`Updating site setting: ${settingKey}`);
+      
+      const { error: updateError } = await updateSiteSetting(settingKey, newBannerUrl);
+        
+      if (updateError) {
+        console.error("Settings update error:", updateError);
+        throw updateError;
+      }
+      
+      // Update state to force re-render
+      setBannerUrls(prev => ({
+        ...prev,
+        [`banner${selectedBanner}`]: newBannerUrl
+      }));
+      
+      console.log("Banner updated successfully");
+      setBannerUpdateSuccess(true);
+      setNewBannerUrl(''); // Clear input field
+      
+      // Hide success message after 3 seconds
+      setTimeout(() => setBannerUpdateSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Error updating banner:', err);
+      setBannerUpdateError(err.message || 'Failed to update banner. Check console for details.');
     }
   };
   
@@ -421,6 +476,148 @@ const AdminPage: React.FC = () => {
                 No candidates found. Add a DJ to get started.
               </div>
             )}
+          </div>
+        </div>
+        
+        {/* Banner Management Tool */}
+        <div className="p-6 bg-black border border-[#9ACD32]/30 rounded-md mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-lg text-[#9ACD32]">Banner Management</h2>
+          </div>
+          
+          {bannerUpdateError && (
+            <div className="mb-4 p-3 bg-red-900/30 border border-red-500 text-red-300 rounded-md">
+              <div className="font-bold mb-1">Error updating banner:</div>
+              <div>{bannerUpdateError}</div>
+              <button
+                className="mt-2 text-red-300 hover:text-red-100 text-sm"
+                onClick={() => setBannerUpdateError(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          
+          {bannerUpdateSuccess && (
+            <div className="mb-4 p-3 bg-green-900/30 border border-green-500 text-green-300 rounded-md">
+              <div className="font-bold">Banner updated successfully!</div>
+              <div className="text-sm mt-1">
+                The banner URL has been updated and will appear on the login and register pages.
+                {localStorage.getItem(`login_banner${selectedBanner}`) && (
+                  <div className="mt-2">
+                    Banner URL: <span className="text-xs break-all">{localStorage.getItem(`login_banner${selectedBanner}`)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+                <div className="flex flex-col space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#9ACD32]">Banner Selection</span>
+                  </div>
+                  
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => setSelectedBanner(1)}
+                      className={`px-4 py-2 border ${selectedBanner === 1 ? 'bg-[#9ACD32] text-black' : 'border-[#9ACD32]/50 text-[#9ACD32]'} rounded`}
+                    >
+                      Banner 1
+                    </button>
+                    <button
+                      onClick={() => setSelectedBanner(2)}
+                      className={`px-4 py-2 border ${selectedBanner === 2 ? 'bg-[#9ACD32] text-black' : 'border-[#9ACD32]/50 text-[#9ACD32]'} rounded`}
+                    >
+                      Banner 2
+                    </button>
+                  </div>
+                  
+                  <div className="text-xs text-gray-400">
+                    Select which banner position to update
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+                <div className="flex flex-col space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#9ACD32]">Set Banner Image URL</span>
+                  </div>
+                  
+                  <form onSubmit={handleBannerUpdate} className="space-y-4">
+                    <div className="flex">
+                      <input
+                        type="url"
+                        value={newBannerUrl}
+                        onChange={(e) => setNewBannerUrl(e.target.value)}
+                        placeholder="https://example.com/image.jpg"
+                        className="flex-1 bg-black border border-[#9ACD32]/50 text-white px-3 py-2 rounded-l-md focus:outline-none focus:border-[#9ACD32]"
+                      />
+                      <button
+                        type="submit"
+                        className="bg-[#9ACD32]/20 hover:bg-[#9ACD32]/30 border-t border-r border-b border-[#9ACD32]/50 text-[#9ACD32] px-3 rounded-r-md flex items-center"
+                      >
+                        <LinkIcon size={16} />
+                      </button>
+                    </div>
+                    
+                    <div className="text-xs text-gray-400">
+                      Enter the full URL to an image hosted anywhere on the web (including https://)
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      className="w-full bg-[#9ACD32]/10 border border-[#9ACD32]/50 text-[#9ACD32] py-2 rounded hover:bg-[#9ACD32]/20 transition duration-200"
+                    >
+                      Update Banner
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-black border border-[#9ACD32]/30 rounded-md">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-[#9ACD32]">Preview</span>
+              </div>
+              
+              <div className="text-xs text-gray-400 mb-2">
+                Banner {selectedBanner} will appear in the {selectedBanner === 1 ? 'left' : 'right'} section on login and register pages
+              </div>
+              
+              <div className="h-64 border border-[#9ACD32]/30 rounded-md overflow-hidden">
+                {(() => {
+                  // Get current banner URL from local state
+                  const bannerUrl = bannerUrls[`banner${selectedBanner}`] || localStorage.getItem(`login_banner${selectedBanner}`);
+                  
+                  if (bannerUrl) {
+                    return (
+                      <img 
+                        id={`banner-preview-${selectedBanner}`}
+                        src={bannerUrl} 
+                        alt={`Banner ${selectedBanner} preview`} 
+                        className="w-full h-full object-cover" 
+                        onError={(e) => {
+                          console.error('Error loading banner preview:', e);
+                          // If image fails to load, show fallback
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    );
+                  }
+                  
+                  return (
+                    <div className="w-full h-full bg-black flex items-center justify-center text-[#9ACD32]/50 font-mono">
+                      &lt;/banner provision {selectedBanner}&gt;
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
           </div>
         </div>
       </div>

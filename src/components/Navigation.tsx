@@ -28,42 +28,44 @@ const Navigation: React.FC = () => {
   ];
 
   return (
-    <motion.nav 
-      className="fixed bottom-0 left-0 right-0 bg-black border-t border-[#9ACD32] px-2 py-2 z-50 font-mono shadow-lg"
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.5 }}
-    >
-      <div className="container mx-auto">
-        <div className="flex justify-between items-center">
-          <div className="hidden md:flex items-center text-xs text-[#9ACD32]/70 px-2">
-            <Terminal size={12} className="mr-1" />
-            <span>MENU</span>
-          </div>
-          
-          <div className="flex mx-auto md:mx-0 space-x-1 md:space-x-4 overflow-x-auto pb-1 no-scrollbar">
-            {navItems.map((item) => (
-              <NavItem 
-                key={item.path}
-                path={item.path}
-                label={item.label}
-                Icon={item.icon}
-                isActive={isActive(item.path)}
-              />
-            ))}
-          </div>
-          
-          <div className="hidden md:block text-xs text-[#9ACD32]/70 px-2">
-            <motion.span
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              READY
-            </motion.span>
+    <div className="fixed bottom-28 left-0 right-0 z-[60] flex justify-center">
+      <motion.nav 
+        className="w-full bg-black border-t border-[#9ACD32] px-2 py-2 font-mono shadow-lg"
+        initial={{ y: 100 }}
+        animate={{ y: 0 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.5 }}
+      >
+        <div className="container mx-auto">
+          <div className="flex justify-between items-center">
+            <div className="hidden md:flex items-center text-xs text-[#9ACD32]/70 px-2">
+              <Terminal size={12} className="mr-1" />
+              <span>MENU</span>
+            </div>
+            
+            <div className="flex mx-auto md:mx-0 space-x-1 md:space-x-4 overflow-x-auto pb-1 no-scrollbar">
+              {navItems.map((item) => (
+                <NavItem 
+                  key={item.path}
+                  path={item.path}
+                  label={item.label}
+                  Icon={item.icon}
+                  isActive={isActive(item.path)}
+                />
+              ))}
+            </div>
+            
+            <div className="hidden md:block text-xs text-[#9ACD32]/70 px-2">
+              <motion.span
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                READY
+              </motion.span>
+            </div>
           </div>
         </div>
-      </div>
-    </motion.nav>
+      </motion.nav>
+    </div>
   );
 };
 

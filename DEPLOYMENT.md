@@ -7,22 +7,7 @@ https://midnight-dj-vote-og5mrn0vr-notsedanos-projects.vercel.app
 ## Access the Admin Panel
 1. Navigate to `/admin` on the deployment URL
 2. Login with your admin credentials
-3. You should now see the Admin Panel with the banner management tools at the bottom
-
-## Banner Management
-The application now supports two ways to manage banners:
-
-### External Banner URLs (Recommended)
-1. Go to the Admin Panel (`/admin`)
-2. Scroll down to "Banner Management" section
-3. Use the "External Banner URL Manager" to add URLs to images hosted elsewhere
-4. Input the full URL to an image (e.g. from Imgur, Cloudinary, or any site that allows hotlinking)
-5. Click "Save" to apply the banner
-
-### Testing Banners
-1. Visit `/test-banner` to see all current banners and test new ones
-2. You can quickly test any image URL to see if it works correctly
-3. Sample URLs are provided for testing purposes
+3. You should now see the Admin Panel with the banner upload feature at the bottom
 
 ## Manual Deployment Steps
 If you need to deploy the application manually:
@@ -34,11 +19,10 @@ If you need to deploy the application manually:
 5. Select the branch you want to deploy (usually 'main')
 
 ## Troubleshooting Banner Upload Issues
-If you encounter issues with banners:
+If you encounter "Bucket not found" errors:
 
-1. Try using an external image URL instead of uploading directly
-2. Make sure the image URL is publicly accessible
-3. Visit the `/test-banner` path for troubleshooting
-4. Check your browser console for detailed error messages
+1. Make sure you've created the 'banners' bucket in your Supabase dashboard
+2. Visit the `/test-bucket` path on the deployment URL to diagnose issues
+3. Check your browser console for detailed error messages
 
-The app now uses a simple localStorage-based system for banners, which is more reliable than the previous database-based approach. For a more permanent solution, run the SQL in `create-settings-table.sql` in your Supabase SQL editor. 
+The app has been updated to work without requiring the site_settings table in the database, using localStorage instead. For a more permanent solution, run the SQL in `create-settings-table.sql` in your Supabase SQL editor. 
