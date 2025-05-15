@@ -1,19 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
-// Use environment variables for Supabase configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Get the base URL for the current environment
-const getBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    // Browser - use current origin
-    return window.location.origin;
-  }
-  // SSR - use a default URL
-  return 'http://localhost:3000';
-};
 
 // Add debug logging
 console.log("Supabase initialization:", { 
@@ -27,21 +16,52 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing environment variables for Supabase connection');
 }
 
-// Use proxy URL for Supabase to avoid CORS issues
-const useProxyUrl = true; // Set to false to use direct Supabase URL
+// Ensure URL has proper format
+let normalizedSupabaseUrl = supabaseUrl;
+if (normalizedSupabaseUrl) {
+  // Remove any trailing slashes
+  normalizedSupabaseUrl = normalizedSupabaseUrl.replace(/\/+$/, '');
+  
+  // Ensure URL starts with https://
+  if (!normalizedSupabaseUrl.startsWith('https://')) {
+    normalizedSupabaseUrl = 'https://' + normalizedSupabaseUrl;
+  }
+}
 
-// Create client with the proxy URL when in production
-export const supabase = createClient<Database>(
-  // For production, use our proxy endpoint
-  useProxyUrl 
-    ? `${getBaseUrl()}/api/supabase`
-    : supabaseUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true
+// Create client with a very specific configuration to avoid CORS issues
+export const supabase = createClient<Database>(normalizedSupabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  },
+  global: {
+    fetch: (...args) => {
+      // This is specifically to handle Safari's strict CORS implementation
+      const [url, options = {}] = args;
+      const headers = new Headers(options.headers || {});
+      
+      // Try without credentials mode for auth endpoints
+      const urlStr = url.toString();
+      const isAuthEndpoint = urlStr.includes('/auth/v1/');
+      
+      const customOptions = {
+        ...options,
+        headers,
+        mode: 'cors' as RequestMode,
+        credentials: isAuthEndpoint ? 'omit' as RequestCredentials : 'include' as RequestCredentials,
+      };
+      
+      return fetch(url, customOptions)
+        .then(response => {
+          // Log response info for debugging
+          console.log(`[Supabase Fetch] ${options.method || 'GET'} ${urlStr.split('?')[0]}: ${response.status}`);
+          return response;
+        })
+        .catch(error => {
+          console.error(`[Supabase Fetch Error] ${options.method || 'GET'} ${urlStr.split('?')[0]}:`, error);
+          throw error;
+        });
     }
   }
-);
+});
