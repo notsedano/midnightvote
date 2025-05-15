@@ -7,7 +7,7 @@ import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
 import VoteNotification from '../components/VoteNotification';
 import { motion } from 'framer-motion';
-import { Music, Info, Headphones, Terminal } from 'lucide-react';
+import { Music, Info, Headphones, Terminal, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
@@ -33,14 +33,22 @@ const VotePage: React.FC = () => {
   
   // Reset vote submitted state when userVote changes
   useEffect(() => {
+    console.log("VOTE STATE CHANGE DETECTED", {
+      hasUserVote: !!userVote,
+      lastVoteCancelled,
+      voteCancelled
+    });
+    
     if (userVote) {
+      console.log("USER HAS ACTIVE VOTE", userVote);
       setVoteSubmitted(true);
       showNotification("Your vote has been recorded successfully!", "success");
       setVoteCancelled(false);
     } else if (lastVoteCancelled !== null && !voteCancelled) {
+      console.log("VOTE WAS CANCELLED", { lastVoteCancelled });
       setVoteSubmitted(false);
       setVoteCancelled(true);
-      showNotification("Your vote has been cancelled. You can vote again after 5 minutes.", "info");
+      showNotification("Your vote has been cancelled. You can vote again immediately.", "info");
     }
   }, [userVote, lastVoteCancelled, voteCancelled]);
   
@@ -101,7 +109,13 @@ const VotePage: React.FC = () => {
   };
 
   const handleCancelVote = async () => {
+    console.log("HANDLE CANCEL VOTE CALLED", { user, userVote });
+    
     if (!user || !userVote) {
+      console.error("CANCEL VOTE ERROR: Missing user or vote", { 
+        hasUser: !!user, 
+        hasVote: !!userVote 
+      });
       setError("You don't have an active vote to cancel.");
       showNotification("You don't have an active vote to cancel.", "error");
       return;
@@ -111,18 +125,22 @@ const VotePage: React.FC = () => {
     showNotification("Cancelling your vote...", "info");
     
     try {
+      console.log("CALLING cancelVote FROM VotingContext");
       const result = await cancelVote();
+      console.log("CANCEL VOTE RESULT", result);
       
       if (result.success) {
+        console.log("VOTE CANCELLATION SUCCESSFUL");
         setVoteCancelled(true);
         setVoteSubmitted(false);
-        showNotification("Your vote has been cancelled. You can vote again after 5 minutes.", "info");
+        showNotification("Your vote has been cancelled. You can vote again immediately.", "info");
         console.log("Vote cancelled successfully!");
       } else {
+        console.error("VOTE CANCELLATION FAILED", result.error);
         throw new Error(result.error || "Failed to cancel vote");
       }
     } catch (err: any) {
-      console.error("Error cancelling vote:", err);
+      console.error("ERROR in handleCancelVote", err);
       setError(err.message || "Failed to cancel your vote. Please try again.");
       showNotification(err.message || "Failed to cancel your vote. Please try again.", "error");
     }
@@ -154,13 +172,13 @@ const VotePage: React.FC = () => {
   return (
     <Layout>
       <Banner 
-        title="DJ VOTING SYSTEM"
-        subtitle="CAST YOUR VOTE"
+        title="MIDNIGHTREBELS &FRIENDS"
+        subtitle="DJ COMPETITION, OKADA - MANILA"
       />
       
-      <div className="container mx-auto px-4 relative">
+      <div className="container mx-auto px-4 py-4 relative mb-20">
         {/* Instructions Panel */}
-        <div className="border border-[#9ACD32] bg-black p-3 mb-6">
+        <div className="border border-[#9ACD32] bg-black p-3 mb-6 rounded-md">
           <div className="border-b border-[#9ACD32]/50 pb-2 mb-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Terminal size={16} className="text-[#9ACD32]" />
@@ -186,29 +204,31 @@ const VotePage: React.FC = () => {
           
           {showInfo && (
             <motion.div 
-              className="border border-[#9ACD32]/30 p-3 mb-3 text-xs text-[#9ACD32]/90 font-mono"
+              className="border border-[#9ACD32]/30 p-3 mb-3 text-xs text-[#9ACD32]/90 font-mono rounded-md"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
             >
               <p className="mb-2">1. <strong>PRESS AND HOLD</strong> on a DJ card for 1.5 seconds to cast your vote.</p>
               <p className="mb-2">2. You can vote for <strong>ONLY ONE DJ</strong> in the competition.</p>
-              <p className="mb-2">3. To change your vote, <strong>HOLD</strong> your voted DJ card for 3.5 seconds.</p>
-              <p>4. After cancelling, there's a <strong>5-MINUTE COOLDOWN</strong> before voting again.</p>
+              <p className="mb-2">3. To change your vote, <strong>HOLD</strong> your voted DJ card for 3.5 seconds or use the cancel button.</p>
+              <p>4. After cancelling, you can immediately vote for another DJ.</p>
             </motion.div>
           )}
           
           {userVote && (
             <div className="border-t border-[#9ACD32]/30 pt-3 mt-2">
-              <Button
-                variant="secondary"
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleCancelVote}
-                className="w-full md:w-auto"
+                className="flex items-center justify-center px-4 py-2 bg-black border border-[#9ACD32] text-[#9ACD32] font-mono text-sm rounded-md hover:bg-[#9ACD32]/10 transition-colors w-full md:w-auto"
               >
-                Cancel My Vote
-              </Button>
-              <p className="text-xs text-[#9ACD32]/50 mt-2">
-                Or long-press your voted DJ card for 3.5 seconds
+                <X size={16} className="mr-2" />
+                CANCEL VOTE FOR {candidates.find(c => c.id === userVote.candidate_id)?.name.toUpperCase()}
+              </motion.button>
+              <p className="text-xs text-[#9ACD32]/50 mt-2 font-mono">
+                OR HOLD YOUR VOTED DJ CARD FOR 3.5 SECONDS
               </p>
             </div>
           )}
@@ -217,7 +237,7 @@ const VotePage: React.FC = () => {
         {/* DJ Cards Grid */}
         {candidates.length > 0 ? (
           <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -229,6 +249,7 @@ const VotePage: React.FC = () => {
                   name={candidate.name}
                   genre={candidate.genre}
                   image={candidate.image_url}
+                  youtube_url={candidate.youtube_url}
                   voteCount={voteCounts[candidate.id] || 0}
                   totalVotes={totalVotes}
                   hasVoted={!!userVote}
@@ -240,7 +261,7 @@ const VotePage: React.FC = () => {
             ))}
           </motion.div>
         ) : (
-          <div className="border border-[#9ACD32] bg-black p-6 text-center">
+          <div className="border border-[#9ACD32] bg-black p-6 text-center rounded-md">
             <Music size={48} className="mx-auto text-[#9ACD32]/50 mb-4" />
             <p className="text-[#9ACD32] mb-2 font-mono">No candidates available yet</p>
             <p className="text-sm text-[#9ACD32]/70 font-mono">Check back soon</p>

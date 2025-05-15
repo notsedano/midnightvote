@@ -8,10 +8,11 @@ type AuthContextType = {
   profile: any | null;
   isAdmin: boolean;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string, ipAddress?: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any, data: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
+  updateUserIp: (userId: string, ipAddress: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   signUp: async () => ({ error: null, data: null }),
   signOut: async () => {},
   resetPassword: async () => ({ error: null }),
+  updateUserIp: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -105,8 +107,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+  // Update user's IP address
+  const updateUserIp = async (userId: string, ipAddress: string) => {
+    if (!userId || !ipAddress) return;
+    
+    try {
+      // Check if we have a profiles_ip table
+      const { error: checkError } = await supabase
+        .from('profiles_ip')
+        .select('id')
+        .limit(1);
+        
+      if (checkError) {
+        // If the table doesn't exist, try updating the profiles metadata instead
+        console.log('profiles_ip table not found, trying metadata update');
+        const { error } = await supabase
+          .from('profiles')
+          .update({ metadata: { ip_address: ipAddress, last_login: new Date().toISOString() } })
+          .eq('id', userId);
+          
+        if (error) console.error('Error updating profile metadata:', error);
+      } else {
+        // If the table exists, upsert the IP record
+        const { error } = await supabase
+          .from('profiles_ip')
+          .upsert({ 
+            user_id: userId, 
+            ip_address: ipAddress, 
+            last_login: new Date().toISOString() 
+          });
+          
+        if (error) console.error('Error updating profiles_ip:', error);
+      }
+    } catch (e) {
+      console.error('Error in updateUserIp:', e);
+    }
+  };
+
+  const signIn = async (email: string, password: string, ipAddress?: string) => {
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
+    
+    // If login was successful and we have an IP address, update it
+    if (!error && data.user && ipAddress) {
+      await updateUserIp(data.user.id, ipAddress);
+    }
+    
     return { error };
   };
 
@@ -143,6 +188,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signUp,
       signOut,
       resetPassword,
+      updateUserIp,
     }}>
       {children}
     </AuthContext.Provider>

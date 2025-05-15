@@ -319,3 +319,113 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+@layer utilities {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .no-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #000;
+  color: #FFF;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.console-header {
+  background-color: #9ACD32;
+  color: black;
+}
+
+/* Terminal-style input */
+.input {
+  @apply w-full bg-black border border-[#9ACD32]/30 text-white rounded-md py-2 px-3 focus:outline-none focus:border-[#9ACD32]/70 transition-colors;
+}
+
+/* Button styles */
+.btn {
+  @apply py-2 px-4 rounded-md font-mono text-sm transition-colors flex items-center justify-center;
+}
+
+.btn-primary {
+  @apply bg-[#9ACD32] text-black hover:bg-[#9ACD32]/90;
+}
+
+.btn-secondary {
+  @apply bg-black border border-[#9ACD32] text-[#9ACD32] hover:bg-[#9ACD32]/10;
+}
+
+/* Error styles */
+.text-error-300 {
+  @apply text-red-300;
+}
+
+.bg-error-900\/30 {
+  @apply bg-red-900/30;
+}
+
+.border-error-700 {
+  @apply border-red-700;
+}
+
+/* Success styles */
+.text-success-300 {
+  @apply text-green-300;
+}
+
+.bg-success-900\/30 {
+  @apply bg-green-900/30;
+}
+
+.border-success-700 {
+  @apply border-green-700;
+}
+
+/* Dark styles */
+.bg-dark-900 {
+  @apply bg-black;
+}
+
+.bg-dark-800 {
+  @apply bg-gray-900;
+}
+
+.bg-dark-700 {
+  @apply bg-gray-800;
+}
+
+/* Customized scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(154, 205, 50, 0.5);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(154, 205, 50, 0.8);
+}

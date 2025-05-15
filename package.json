@@ -4,14 +4,17 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@metamask/logo": "^4.0.0",
+    "@metamask/providers": "^22.1.0",
     "@supabase/supabase-js": "^2.38.4",
     "chart.js": "^4.4.1",
+    "ethers": "^5.7.2",
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
@@ -26,6 +29,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.18",
+    "dotenv": "^16.5.0",
     "eslint": "^9.9.1",
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.11",

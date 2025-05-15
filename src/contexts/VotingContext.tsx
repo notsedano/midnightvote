@@ -10,6 +10,7 @@ type Candidate = {
   image_url: string | null;
   instagram_username: string | null;
   bio: string | null;
+  youtube_url: string | null;
   vote_count?: number;
 };
 
@@ -31,6 +32,7 @@ type VotingContextType = {
   fetchVotes: () => Promise<void>;
   castVote: (candidateId: number) => Promise<{ success: boolean; error?: string }>;
   cancelVote: () => Promise<{ success: boolean; error?: string }>;
+  updateCandidate: (id: number, data: Partial<Candidate>) => Promise<{ success: boolean; error?: string }>;
   voteCounts: Record<number, number>;
   totalVotes: number;
   lastVoteCancelled: number | null;
@@ -46,6 +48,7 @@ const VotingContext = createContext<VotingContextType>({
   fetchVotes: async () => {},
   castVote: async () => ({ success: false }),
   cancelVote: async () => ({ success: false }),
+  updateCandidate: async () => ({ success: false }),
   voteCounts: {},
   totalVotes: 0,
   lastVoteCancelled: null,
@@ -60,7 +63,6 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [voteCounts, setVoteCounts] = useState<Record<number, number>>({});
   const [totalVotes, setTotalVotes] = useState<number>(0);
   const [lastVoteCancelled, setLastVoteCancelled] = useState<number | null>(null);
-  const [voteCooldown, setVoteCooldown] = useState<boolean>(false);
 
   const { user } = useAuth();
 
@@ -161,6 +163,7 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const fetchVotes = async () => {
+    console.log("FETCH VOTES CALLED");
     try {
       setIsLoading(true);
       setError(null);
@@ -171,7 +174,15 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .from('votes')
         .select('*');
       
-      if (error) throw error;
+      if (error) {
+        console.error("ERROR FETCHING VOTES", error);
+        throw error;
+      }
+      
+      console.log("VOTES FETCHED", { 
+        count: data?.length || 0, 
+        votes: data
+      });
       
       logger.info('Votes fetched successfully', { 
         component: 'VotingContext',
@@ -189,8 +200,20 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         total++;
       });
       
+      console.log("VOTE COUNTS CALCULATED", { counts, total });
+      
       setVoteCounts(counts);
       setTotalVotes(total);
+      
+      // Check if user's vote is still in the list after refresh
+      if (user) {
+        const userVoteAfterRefresh = data?.find(v => v.user_id === user.id);
+        console.log("USER VOTE AFTER REFRESH", { 
+          userId: user.id,
+          hasVote: !!userVoteAfterRefresh,
+          voteDetails: userVoteAfterRefresh
+        });
+      }
       
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch votes';
@@ -312,27 +335,31 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
-  // Add cancelVote function
+  // Modify the cancelVote function to remove the cooldown check and timeout
   const cancelVote = async () => {
+    console.log("CANCEL VOTE FUNCTION CALLED", { user, userVote });
+    
     if (!user) {
       const errorMsg = 'You must be logged in to cancel a vote';
+      console.error("CANCEL VOTE ERROR: No user logged in");
       logger.warn(errorMsg, { component: 'VotingContext' });
       return { success: false, error: errorMsg };
     }
 
     if (!userVote) {
       const errorMsg = 'You have not voted yet';
-      logger.warn(errorMsg, { component: 'VotingContext' });
-      return { success: false, error: errorMsg };
-    }
-
-    if (voteCooldown) {
-      const errorMsg = 'Please wait 5 minutes before voting again';
+      console.error("CANCEL VOTE ERROR: No active vote found", { userId: user?.id });
       logger.warn(errorMsg, { component: 'VotingContext' });
       return { success: false, error: errorMsg };
     }
 
     try {
+      console.log("STARTING VOTE CANCELLATION", { 
+        userVoteId: userVote.id,
+        candidateId: userVote.candidate_id,
+        userId: user.id
+      });
+      
       setIsLoading(true);
       setError(null);
 
@@ -345,12 +372,17 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const cancelledCandidateId = userVote.candidate_id;
       
       // Delete the vote
-      const { error: deleteError } = await supabase
+      console.log("DELETING VOTE FROM DATABASE", { voteId: userVote.id });
+      const { error: deleteError, data: deleteData } = await supabase
         .from('votes')
         .delete()
-        .eq('id', userVote.id);
+        .eq('id', userVote.id)
+        .select();
         
+      console.log("DELETE VOTE RESPONSE", { deleteError, deleteData });
+      
       if (deleteError) {
+        console.error("ERROR DELETING VOTE", deleteError);
         logger.error('Error deleting vote', { 
           component: 'VotingContext',
           data: deleteError
@@ -359,12 +391,17 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       
       // Update profile has_voted status
-      const { error: profileError } = await supabase
+      console.log("UPDATING PROFILE has_voted STATUS", { userId: user.id });
+      const { error: profileError, data: profileData } = await supabase
         .from('profiles')
         .update({ has_voted: false })
-        .eq('id', user.id);
+        .eq('id', user.id)
+        .select();
         
+      console.log("UPDATE PROFILE RESPONSE", { profileError, profileData });
+      
       if (profileError) {
+        console.error("ERROR UPDATING PROFILE", profileError);
         logger.error('Error updating profile after vote cancellation', { 
           component: 'VotingContext',
           data: profileError
@@ -372,18 +409,15 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         console.error('Error updating profile has_voted status:', profileError);
       }
       
-      // Set cooldown
-      setVoteCooldown(true);
+      // Set the last cancelled candidate ID but remove the cooldown
+      console.log("SETTING lastVoteCancelled", cancelledCandidateId);
       setLastVoteCancelled(cancelledCandidateId);
       
-      // Reset cooldown after 5 minutes
-      setTimeout(() => {
-        setVoteCooldown(false);
-      }, 5 * 60 * 1000); // 5 minutes in milliseconds
-      
       // Refresh votes to get the latest state
+      console.log("REFRESHING VOTES");
       await fetchVotes();
       
+      console.log("VOTE CANCELLATION COMPLETE", { success: true });
       logger.info('Vote cancelled successfully', { 
         component: 'VotingContext',
         data: { userId: user.id, voteId: userVote.id }
@@ -392,6 +426,7 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return { success: true };
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to cancel vote';
+      console.error("CANCEL VOTE EXCEPTION", err);
       setError(errorMessage);
       logger.error('Error cancelling vote', { 
         component: 'VotingContext', 
@@ -403,21 +438,69 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   };
 
+  const updateCandidate = async (id: number, data: Partial<Candidate>) => {
+    if (!user) {
+      const errorMsg = 'You must be logged in to update a candidate';
+      logger.warn(errorMsg, { component: 'VotingContext' });
+      return { success: false, error: errorMsg };
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      logger.info('Updating candidate', { 
+        component: 'VotingContext',
+        data: { candidateId: id, updateData: data }
+      });
+      
+      const { error } = await supabase
+        .from('candidates')
+        .update(data)
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      logger.info('Candidate updated successfully', { 
+        component: 'VotingContext',
+        data: { candidateId: id }
+      });
+      
+      // Refresh candidate data
+      await fetchCandidates();
+      
+      return { success: true };
+    } catch (err: any) {
+      const errorMessage = err.message || 'Failed to update candidate';
+      setError(errorMessage);
+      logger.error('Error updating candidate', { 
+        component: 'VotingContext', 
+        data: err 
+      });
+      return { success: false, error: errorMessage };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <VotingContext.Provider value={{
-      candidates,
-      votes,
-      userVote,
-      isLoading,
-      error,
-      fetchCandidates,
-      fetchVotes,
-      castVote,
-      cancelVote,
-      voteCounts,
-      totalVotes,
-      lastVoteCancelled,
-    }}>
+    <VotingContext.Provider
+      value={{
+        candidates,
+        votes,
+        userVote,
+        isLoading,
+        error,
+        fetchCandidates,
+        fetchVotes,
+        castVote,
+        cancelVote,
+        updateCandidate,
+        voteCounts,
+        totalVotes,
+        lastVoteCancelled,
+      }}
+    >
       {children}
     </VotingContext.Provider>
   );
