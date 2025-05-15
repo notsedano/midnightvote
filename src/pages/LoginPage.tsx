@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Terminal } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { getBannerUrl } from '../lib/bannerService';
 import Footer from '../components/Footer';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -31,11 +30,59 @@ const LoginPage: React.FC = () => {
 
   // Fetch banner images on load
   useEffect(() => {
-    // Get banner images from our banner service
-    setBannerImages({
-      banner1: getBannerUrl('login1'),
-      banner2: getBannerUrl('login2')
-    });
+    const fetchBannerImages = async () => {
+      try {
+        // First check localStorage
+        const localBanner1 = localStorage.getItem('login_banner1');
+        const localBanner2 = localStorage.getItem('login_banner2');
+        
+        if (localBanner1 || localBanner2) {
+          // Use localStorage values if available
+          setBannerImages({
+            banner1: localBanner1 || '',
+            banner2: localBanner2 || ''
+          });
+        } else {
+          // Fall back to database if localStorage is empty
+          try {
+            const { data, error } = await supabase
+              .from('site_settings')
+              .select('key, value')
+              .in('key', ['login_banner1', 'login_banner2'])
+              .order('key');
+              
+            if (error) throw error;
+            
+            if (data && data.length > 0) {
+              const images = {
+                banner1: '',
+                banner2: ''
+              };
+              
+              data.forEach(item => {
+                if (item.key === 'login_banner1') {
+                  images.banner1 = item.value;
+                  // Also save to localStorage for future use
+                  if (item.value) localStorage.setItem('login_banner1', item.value);
+                } else if (item.key === 'login_banner2') {
+                  images.banner2 = item.value;
+                  // Also save to localStorage for future use
+                  if (item.value) localStorage.setItem('login_banner2', item.value);
+                }
+              });
+              
+              setBannerImages(images);
+            }
+          } catch (dbError) {
+            console.error('Error fetching banner images from database:', dbError);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching banner images:', error);
+      }
+    };
+    
+    fetchBannerImages();
   }, []);
 
   // Fetch user's IP address
@@ -168,34 +215,11 @@ const LoginPage: React.FC = () => {
         <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
           <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
             {bannerImages.banner1 ? (
-              <>
-                <img 
-                  src={bannerImages.banner1} 
-                  alt="Left banner" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error("Error loading banner 1:", bannerImages.banner1);
-                    // Set the display to none instead of removing the element
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    // We'll fallback to the default content
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-[#9ACD32] text-xs font-mono" 
-                  style={{display: 'none'}} // Hidden by default, will be shown by JavaScript on error
-                  ref={(el) => {
-                    if (el) {
-                      const img = el.previousSibling as HTMLImageElement;
-                      if (img) {
-                        img.onerror = () => {
-                          el.style.display = 'flex';
-                        };
-                      }
-                    }
-                  }}
-                >
-                  Image failed to load - Check URL
-                </div>
-              </>
+              <img 
+                src={bannerImages.banner1} 
+                alt="Left banner" 
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full bg-black flex flex-col font-mono">
                 {/* Terminal header */}
@@ -294,8 +318,8 @@ const LoginPage: React.FC = () => {
                   type="submit"
                   className="bg-[#9ACD32] text-black font-mono w-full py-2 rounded-md flex items-center justify-center hover:bg-[#9ACD32]/90 transition-colors"
                 >
-                  <ArrowRight className="mr-2" size={16} />
-                  <span>SIGN IN</span>
+                      <ArrowRight className="mr-2" size={16} />
+                      <span>SIGN IN</span>
                 </button>
               </form>
               
@@ -313,44 +337,31 @@ const LoginPage: React.FC = () => {
         <div className="w-full md:w-1/3 bg-black p-2 relative overflow-hidden min-h-[200px] md:min-h-0">
           <div className="w-full h-full border border-[#9ACD32]/30 rounded-md overflow-hidden relative flex items-center justify-center bg-black">
             {bannerImages.banner2 ? (
-              <>
-                <img 
-                  src={bannerImages.banner2} 
-                  alt="Right banner" 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error("Error loading banner 2:", bannerImages.banner2);
-                    // Set the display to none instead of removing the element
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    // We'll fallback to the default content
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 text-[#9ACD32] text-xs font-mono" 
-                  style={{display: 'none'}} // Hidden by default, will be shown by JavaScript on error
-                  ref={(el) => {
-                    if (el) {
-                      const img = el.previousSibling as HTMLImageElement;
-                      if (img) {
-                        img.onerror = () => {
-                          el.style.display = 'flex';
-                        };
-                      }
-                    }
-                  }}
-                >
-                  Image failed to load - Check URL
-                </div>
-              </>
+              <img 
+                src={bannerImages.banner2} 
+                alt="Right banner" 
+                className="w-full h-full object-cover"
+              />
             ) : (
-              <div className="w-full h-48 md:h-full bg-[#9ACD32] flex items-center justify-center text-black font-mono relative">
-                <div className="absolute inset-0 bg-black opacity-10 z-0" 
-                  style={{ 
-                    backgroundImage: 'linear-gradient(transparent 50%, rgba(0, 0, 0, 0.1) 50%)', 
-                    backgroundSize: '100% 4px'
-                  }}>
-                </div>
-                &lt;/banner provision 2&gt;
-              </div>
+              <img 
+                src="https://i.ibb.co/xqFRFLCm/friends.png" 
+                alt="Friends promo" 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null;
+                  target.src = "";
+                  target.parentElement!.innerHTML = `
+                    <div class="w-full h-48 md:h-full bg-[#9ACD32] flex items-center justify-center text-black font-mono relative">
+                      <div class="absolute inset-0 bg-black opacity-10 z-0" 
+                        style="background-image: linear-gradient(transparent 50%, rgba(0, 0, 0, 0.1) 50%); background-size: 100% 4px;">
+                      </div>
+                      &lt;/banner provision 2&gt;
+                    </div>
+                  `;
+                }}
+              />
             )}
           </div>
         </div>

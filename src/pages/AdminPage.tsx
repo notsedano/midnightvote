@@ -9,7 +9,6 @@ import VoteChart from '../components/VoteChart';
 import { supabase } from '../lib/supabase';
 import IpTrackingPanel from '../components/IpTrackingPanel';
 import Footer from '../components/Footer';
-import BannerManager from '../components/BannerManager';
 
 const AdminPage: React.FC = () => {
   const { isAdmin, user } = useAuth();
@@ -261,11 +260,11 @@ const AdminPage: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs text-[#9ACD32]/70 mb-1">DJ Name</label>
-                  <input
-                    type="text"
-                    value={newCandidateName}
-                    onChange={(e) => setNewCandidateName(e.target.value)}
-                    placeholder="Enter DJ name"
+                <input
+                  type="text"
+                  value={newCandidateName}
+                  onChange={(e) => setNewCandidateName(e.target.value)}
+                  placeholder="Enter DJ name"
                     className="flex-1 bg-black border border-[#9ACD32]/50 text-white px-3 py-2 rounded-md focus:outline-none focus:border-[#9ACD32] w-full"
                     required
                   />
@@ -282,13 +281,13 @@ const AdminPage: React.FC = () => {
                   />
                 </div>
                 <div className="flex justify-end pt-2">
-                  <button 
-                    type="submit" 
+                <button 
+                  type="submit" 
                     className="bg-[#9ACD32]/10 border border-[#9ACD32]/50 text-[#9ACD32] px-4 py-2 rounded hover:bg-[#9ACD32]/20 transition duration-200"
                     disabled={!newCandidateName.trim() || !newCandidateGenre.trim()}
-                  >
+                >
                     Add DJ
-                  </button>
+                </button>
                 </div>
               </div>
             </form>
@@ -385,7 +384,7 @@ const AdminPage: React.FC = () => {
                   </form>
                 ) : (
                   <div className="flex justify-between items-center">
-                    <div>
+                <div>
                       <div className="flex items-center mb-1">
                         <div className="text-white mr-2">{candidate.name}</div>
                         {candidate.youtube_url && (
@@ -395,7 +394,7 @@ const AdminPage: React.FC = () => {
                       <div className="text-xs text-gray-400">
                         Genre: {candidate.genre || "Not set"} | Votes: {voteCounts[candidate.id] || 0}
                       </div>
-                    </div>
+                </div>
                     <div className="flex items-center">
                       <button 
                         onClick={() => startEditingCandidate(candidate.id)}
@@ -404,13 +403,13 @@ const AdminPage: React.FC = () => {
                       >
                         <Edit2 size={16} />
                       </button>
-                      <button 
-                        onClick={() => handleDeleteCandidate(candidate.id)}
-                        className="text-red-400 hover:text-red-300 transition duration-200"
-                        aria-label="Delete candidate"
-                      >
+                <button 
+                  onClick={() => handleDeleteCandidate(candidate.id)}
+                  className="text-red-400 hover:text-red-300 transition duration-200"
+                  aria-label="Delete candidate"
+                >
                         <Trash2 size={16} />
-                      </button>
+                </button>
                     </div>
                   </div>
                 )}
@@ -422,27 +421,6 @@ const AdminPage: React.FC = () => {
                 No candidates found. Add a DJ to get started.
               </div>
             )}
-          </div>
-        </div>
-        
-        {/* Banner Management - Updated version with only BannerManager */}
-        <div className="p-6 bg-black border border-[#9ACD32]/30 rounded-md mb-8">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg text-[#9ACD32]">Banner Management</h2>
-          </div>
-          
-          <div className="mb-4">
-            <p className="text-gray-400 text-sm">
-              Use the form below to set external banner URLs. For best results, use direct image URLs from services like 
-              Imgur, Cloudinary, or any hosting service that allows direct image links and supports CORS. 
-              You can also use placeholder services like <span className="text-[#9ACD32]">placehold.co</span>.
-            </p>
-          </div>
-          
-          <BannerManager />
-          
-          <div className="mt-4 text-xs text-gray-400">
-            <p>Visit the <a href="/test-banner" className="text-[#9ACD32] hover:underline">Banner Test Page</a> to verify your banners and troubleshoot any issues.</p>
           </div>
         </div>
       </div>
