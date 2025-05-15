@@ -21,7 +21,7 @@ import Button from '../components/Button';
  * These interactions are isolated to prevent conflicts.
  */
 const VotePage: React.FC = () => {
-  const { candidates, voteCounts, totalVotes, userVote, isLoading, castVote, cancelVote, error: votingError, lastVoteCancelled } = useVoting();
+  const { candidates, voteCounts, totalVotes, userVote, isLoading, castVote, error: votingError, lastVoteCancelled } = useVoting();
   const { user } = useAuth();
   const [voteSubmitted, setVoteSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,13 +52,8 @@ const VotePage: React.FC = () => {
       setVoteSubmitted(true);
       showNotification("Your vote has been recorded successfully!", "success");
       setVoteCancelled(false);
-    } else if (lastVoteCancelled !== null && !voteCancelled) {
-      console.log("VOTE WAS CANCELLED", { lastVoteCancelled });
-      setVoteSubmitted(false);
-      setVoteCancelled(true);
-      showNotification("Your vote has been cancelled. You can vote again immediately.", "info");
     }
-  }, [userVote, lastVoteCancelled, voteCancelled]);
+  }, [userVote]);
   
   // Display voting errors
   useEffect(() => {
@@ -116,44 +111,6 @@ const VotePage: React.FC = () => {
     }
   };
 
-  const handleCancelVote = async () => {
-    console.log("HANDLE CANCEL VOTE CALLED", { user, userVote });
-    
-    if (!user || !userVote) {
-      console.error("CANCEL VOTE ERROR: Missing user or vote", { 
-        hasUser: !!user, 
-        hasVote: !!userVote 
-      });
-      setError("You don't have an active vote to cancel.");
-      showNotification("You don't have an active vote to cancel.", "error");
-      return;
-    }
-    
-    setError(null);
-    showNotification("Cancelling your vote...", "info");
-    
-    try {
-      console.log("CALLING cancelVote FROM VotingContext");
-      const result = await cancelVote();
-      console.log("CANCEL VOTE RESULT", result);
-      
-      if (result.success) {
-        console.log("VOTE CANCELLATION SUCCESSFUL");
-        setVoteCancelled(true);
-        setVoteSubmitted(false);
-        showNotification("Your vote has been cancelled. You can vote again immediately.", "info");
-        console.log("Vote cancelled successfully!");
-      } else {
-        console.error("VOTE CANCELLATION FAILED", result.error);
-        throw new Error(result.error || "Failed to cancel vote");
-      }
-    } catch (err: any) {
-      console.error("ERROR in handleCancelVote", err);
-      setError(err.message || "Failed to cancel your vote. Please try again.");
-      showNotification(err.message || "Failed to cancel your vote. Please try again.", "error");
-    }
-  };
-
   const hideNotification = () => {
     setNotification(prev => ({ ...prev, isVisible: false }));
   };
@@ -181,7 +138,7 @@ const VotePage: React.FC = () => {
     <Layout>
       <Banner 
         title="MIDNIGHTREBELS &FRIENDS"
-        subtitle="DJ COMPETITION - HOLD TO VOTE, TAP VIDEOS TO WATCH"
+        subtitle="DJ COMPETITION - HOLD TO VOTE, VOTES ARE PERMANENT"
       />
       
       <div className="container mx-auto px-4 py-4 relative mb-20">
@@ -219,26 +176,15 @@ const VotePage: React.FC = () => {
             >
               <p className="mb-2">1. <strong>PRESS AND HOLD</strong> on a DJ card for 1.5 seconds to cast your vote.</p>
               <p className="mb-2">2. You can vote for <strong>ONLY ONE DJ</strong> in the competition.</p>
-              <p className="mb-2">3. To change your vote, <strong>HOLD</strong> your voted DJ card for 3.5 seconds or use the cancel button.</p>
-              <p className="mb-2">4. After cancelling, you can immediately vote for another DJ.</p>
-              <p>5. <strong>TAP</strong> on a YouTube thumbnail to watch the DJ's performance video.</p>
+              <p>3. <strong>TAP</strong> on a YouTube thumbnail to watch the DJ's performance video.</p>
             </motion.div>
           )}
           
           {userVote && (
             <div className="border-t border-[#9ACD32]/30 pt-3 mt-2">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleCancelVote}
-                className="flex items-center justify-center px-4 py-2 bg-black border border-[#9ACD32] text-[#9ACD32] font-mono text-sm rounded-md hover:bg-[#9ACD32]/10 transition-colors w-full md:w-auto"
-              >
-                <X size={16} className="mr-2" />
-                CANCEL VOTE FOR {candidates.find(c => c.id === userVote.candidate_id)?.name.toUpperCase()}
-              </motion.button>
-              <p className="text-xs text-[#9ACD32]/50 mt-2 font-mono">
-                OR HOLD YOUR VOTED DJ CARD FOR 3.5 SECONDS
-              </p>
+              <div className="flex items-center justify-center px-4 py-2 bg-black/50 border border-[#9ACD32]/30 text-[#9ACD32] font-mono text-sm rounded-md w-full md:w-auto">
+                <span>YOU VOTED FOR {candidates.find(c => c.id === userVote.candidate_id)?.name.toUpperCase()}</span>
+              </div>
             </div>
           )}
         </div>
@@ -264,7 +210,6 @@ const VotePage: React.FC = () => {
                   hasVoted={!!userVote}
                   userVoted={userVote?.candidate_id === candidate.id}
                   onVote={handleVote}
-                  onCancelVote={userVote?.candidate_id === candidate.id ? handleCancelVote : undefined}
                 />
               </motion.div>
             ))}

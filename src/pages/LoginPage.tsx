@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, Terminal } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
+import LoadingScreen from '../components/LoadingScreen';
 
 const LoginPage: React.FC = () => {
   const { signIn, user } = useAuth();
@@ -198,6 +199,10 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return <LoadingScreen message="Authenticating..." />;
+  }
+
   return (
     <div className="min-h-screen bg-black flex flex-col">
       <div className="text-xs text-[#9ACD32] uppercase tracking-wide p-2 absolute top-0 left-0 z-10">
@@ -312,16 +317,9 @@ const LoginPage: React.FC = () => {
                 <button
                   type="submit"
                   className="bg-[#9ACD32] text-black font-mono w-full py-2 rounded-md flex items-center justify-center hover:bg-[#9ACD32]/90 transition-colors"
-                  disabled={loading}
                 >
-                  {loading ? (
-                    <span className="inline-block animate-pulse">Processing...</span>
-                  ) : (
-                    <>
-                      <ArrowRight className="mr-2" size={16} />
-                      <span>SIGN IN</span>
-                    </>
-                  )}
+                  <ArrowRight className="mr-2" size={16} />
+                  <span>SIGN IN</span>
                 </button>
               </form>
               

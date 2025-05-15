@@ -14,7 +14,6 @@ interface VoteCardProps {
   hasVoted: boolean;
   userVoted?: boolean;
   onVote?: (id: number) => void;
-  onCancelVote?: () => void;
 }
 
 // Helper function to get YouTube thumbnail URL from YouTube video URL
@@ -56,22 +55,16 @@ const VoteCard: React.FC<VoteCardProps> = ({
   hasVoted,
   userVoted = false,
   onVote,
-  onCancelVote,
 }) => {
   const [isVoting, setIsVoting] = useState(false);
-  const [isCancelling, setIsCancelling] = useState(false);
   const [voteProgress, setVoteProgress] = useState(0);
-  const [cancelProgress, setCancelProgress] = useState(0);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [showCancellation, setShowCancellation] = useState(false);
   const [showVideoModal, setShowVideoModal] = useState(false);
   const progressIntervalRef = useRef<number | null>(null);
   const voteTriggeredRef = useRef(false);
-  const cancelTriggeredRef = useRef(false);
   const touchStartTimeRef = useRef<number>(0);
   const touchThreshold = 300; // 300ms threshold to differentiate tap vs hold
   const minHoldTime = 1500; // 1.5 seconds minimum hold time for voting
-  const minCancelHoldTime = 3500; // 3.5 seconds minimum hold time for cancelling
   const videoModalRef = useRef<HTMLDivElement>(null);
   
   const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
@@ -123,16 +116,6 @@ const VoteCard: React.FC<VoteCardProps> = ({
       });
     }
   }, [isVoting, id, name]);
-
-  // Log cancellation interaction
-  useEffect(() => {
-    if (isCancelling) {
-      logger.debug(`Vote cancellation started for ${name}`, { 
-        component: 'VoteCard',
-        data: { candidateId: id } 
-      });
-    }
-  }, [isCancelling, id, name]);
   
   // Clean up intervals when unmounting
   useEffect(() => {
@@ -169,32 +152,6 @@ const VoteCard: React.FC<VoteCardProps> = ({
       }
     }, intervalTime);
   };
-
-  const startCancelProgress = () => {
-    // Cancel any existing interval
-    if (progressIntervalRef.current) {
-      window.clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    
-    setCancelProgress(0);
-    setIsCancelling(true);
-    cancelTriggeredRef.current = false;
-    
-    // Start progress interval - 100% over 3.5 seconds
-    let progress = 0;
-    const incrementAmount = 1; // 1% increment
-    const intervalTime = minCancelHoldTime / (100 / incrementAmount); // time between increments
-    
-    progressIntervalRef.current = window.setInterval(() => {
-      progress += incrementAmount;
-      setCancelProgress(Math.min(progress, 100));
-      
-      if (progress >= 100) {
-        completeCancellation();
-      }
-    }, intervalTime);
-  };
   
   const completeVoting = () => {
     if (progressIntervalRef.current) {
@@ -224,60 +181,17 @@ const VoteCard: React.FC<VoteCardProps> = ({
       setShowConfirmation(false);
     }, 3000);
   };
-
-  const completeCancellation = () => {
-    console.log("VOTE CARD: completeCancellation called", {
-      candidateId: id,
-      candidateName: name,
-      hasCancelHandler: !!onCancelVote
-    });
-    
-    if (progressIntervalRef.current) {
-      window.clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    
-    if (cancelTriggeredRef.current) {
-      console.log("VOTE CARD: Cancellation already triggered, ignoring");
-      return; // Prevent duplicate cancellations
-    }
-    
-    setIsCancelling(false);
-    setCancelProgress(100);
-    setShowCancellation(true);
-    cancelTriggeredRef.current = true;
-    
-    logger.info(`Vote cancellation completed for ${name}`, { 
-      component: 'VoteCard', 
-      data: { candidateId: id }
-    });
-    
-    // Call the cancel vote handler
-    if (onCancelVote) {
-      console.log("VOTE CARD: Calling onCancelVote handler");
-      onCancelVote();
-    } else {
-      console.error("VOTE CARD: No onCancelVote handler provided");
-    }
-    
-    // Hide cancellation after a delay
-    setTimeout(() => {
-      setShowCancellation(false);
-    }, 3000);
-  };
   
   const cancelVoting = () => {
     // Only cancel if voting hasn't completed yet
-    if (!voteTriggeredRef.current && !cancelTriggeredRef.current) {
+    if (!voteTriggeredRef.current) {
       if (progressIntervalRef.current) {
         window.clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
       }
       
       setIsVoting(false);
-      setIsCancelling(false);
       setVoteProgress(0);
-      setCancelProgress(0);
       
       logger.debug(`Interaction canceled for ${name}`, { 
         component: 'VoteCard',
@@ -288,7 +202,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
   
   const handleVideoThumbnailClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering vote action
-    // Cancel any ongoing voting or cancelling actions
+    // Cancel any ongoing voting actions
     cancelVoting();
     if (youtube_url && thumbnailUrl) {
       setShowVideoModal(true);
@@ -309,10 +223,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
     
     if (!hasVoted && !onVote) return;
     
-    if (userVoted && onCancelVote) {
-      logger.debug('Touch start detected for vote cancellation', { component: 'VoteCard' });
-      startCancelProgress();
-    } else if (!hasVoted && onVote && !voteTriggeredRef.current) {
+    if (!hasVoted && onVote && !voteTriggeredRef.current) {
       logger.debug('Touch start detected for voting', { component: 'VoteCard' });
       startVotingProgress();
     }
@@ -335,10 +246,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
     // Calculate how long the user held
     const touchDuration = Date.now() - touchStartTimeRef.current;
     
-    if (userVoted && touchDuration >= minCancelHoldTime && !cancelTriggeredRef.current) {
-      // Complete the vote cancellation if user held long enough
-      completeCancellation();
-    } else if (!hasVoted && touchDuration >= minHoldTime && !voteTriggeredRef.current) {
+    if (!hasVoted && touchDuration >= minHoldTime && !voteTriggeredRef.current) {
       // Complete the vote if user held long enough
       completeVoting();
     } else {
@@ -360,10 +268,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
     
     if (!hasVoted && !onVote) return;
     
-    if (userVoted && onCancelVote) {
-      logger.debug('Mouse down detected for vote cancellation', { component: 'VoteCard' });
-      startCancelProgress();
-    } else if (!hasVoted && onVote && !voteTriggeredRef.current) {
+    if (!hasVoted && onVote && !voteTriggeredRef.current) {
       logger.debug('Mouse down detected for voting', { component: 'VoteCard' });
       startVotingProgress();
     }
@@ -380,10 +285,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
     // Calculate how long the user held
     const clickDuration = Date.now() - touchStartTimeRef.current;
     
-    if (userVoted && clickDuration >= minCancelHoldTime && !cancelTriggeredRef.current) {
-      // Complete the vote cancellation if user held long enough
-      completeCancellation();
-    } else if (!hasVoted && clickDuration >= minHoldTime && !voteTriggeredRef.current) {
+    if (!hasVoted && clickDuration >= minHoldTime && !voteTriggeredRef.current) {
       // Complete the vote if user held long enough
       completeVoting();
     } else {
@@ -469,36 +371,18 @@ const VoteCard: React.FC<VoteCardProps> = ({
       </div>
       
       {/* Interaction overlays */}
-      {(isVoting || isCancelling) && (
+      {isVoting && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
           <div className="text-center">
-            {isVoting && (
-              <>
-                <div className="mb-4 font-mono text-[#9ACD32]">
-                  {voteProgress < 100 ? 'HOLD TO VOTE' : 'VOTE CONFIRMED'}
-                </div>
-                <div className="w-32 h-2 bg-[#9ACD32]/20 rounded-full mx-auto mb-2">
-                  <div 
-                    className="h-full bg-[#9ACD32] rounded-full" 
-                    style={{ width: `${voteProgress}%` }}
-                  />
-                </div>
-              </>
-            )}
-            
-            {isCancelling && (
-              <>
-                <div className="mb-4 font-mono text-red-500">
-                  {cancelProgress < 100 ? 'HOLD TO CANCEL VOTE' : 'VOTE CANCELLED'}
-                </div>
-                <div className="w-32 h-2 bg-red-900/20 rounded-full mx-auto mb-2">
-                  <div 
-                    className="h-full bg-red-500 rounded-full" 
-                    style={{ width: `${cancelProgress}%` }}
-                  />
-                </div>
-              </>
-            )}
+            <div className="mb-4 font-mono text-[#9ACD32]">
+              {voteProgress < 100 ? 'HOLD TO VOTE' : 'VOTE CONFIRMED'}
+            </div>
+            <div className="w-32 h-2 bg-[#9ACD32]/20 rounded-full mx-auto mb-2">
+              <div 
+                className="h-full bg-[#9ACD32] rounded-full" 
+                style={{ width: `${voteProgress}%` }}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -520,28 +404,6 @@ const VoteCard: React.FC<VoteCardProps> = ({
             >
               <div className="font-mono text-[#9ACD32] text-lg mb-2">VOTE CONFIRMED</div>
               <div className="text-gray-400 text-sm">Thank you for your vote!</div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      {/* Cancellation animation */}
-      <AnimatePresence>
-        {showCancellation && (
-          <motion.div 
-            className="absolute inset-0 bg-red-900/20 backdrop-blur-sm flex items-center justify-center z-10"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div 
-              className="text-center p-4 bg-black/80 rounded-md border border-red-500"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
-            >
-              <div className="font-mono text-red-500 text-lg mb-2">VOTE REMOVED</div>
-              <div className="text-gray-400 text-sm">Your vote has been cancelled.</div>
             </motion.div>
           </motion.div>
         )}
