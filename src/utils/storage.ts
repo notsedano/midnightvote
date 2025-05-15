@@ -23,7 +23,7 @@ export async function uploadImage(file: File, bucket: string, path: string): Pro
       .from(bucket)
       .upload(path, file, { 
         upsert: true,
-        cacheControl: '3600'
+        cacheControl: '2592000' // 30 days cache for better performance
       });
       
     if (uploadError) {
@@ -78,11 +78,11 @@ export async function updateSiteSetting(key: string, value: string): Promise<{
       
     if (error) {
       console.error('Site setting update error:', error);
-      console.log('Falling back to localStorage only');
-      // Don't throw error, just use localStorage
+      console.warn('Failed to update database. This means other users will not see the banner image.');
+      throw error; // Throw error to indicate database failure
     }
     
-    // Always update localStorage for immediate effect
+    // Only update localStorage if database update succeeded
     localStorage.setItem(key, value);
     console.log(`Updated localStorage for key: ${key}`);
     
@@ -94,19 +94,17 @@ export async function updateSiteSetting(key: string, value: string): Promise<{
     console.error('Error updating site setting:', error.message);
     console.error('Error details:', error);
     
-    // Try localStorage as fallback
+    // Still update localStorage for the current user's experience
     try {
       localStorage.setItem(key, value);
       console.log(`Fallback: Updated localStorage for key: ${key}`);
-      return {
-        success: true,
-        error: null
-      };
     } catch (localError) {
-      return {
-        success: false,
-        error
-      };
+      console.error('Failed to update even localStorage:', localError);
     }
+    
+    return {
+      success: false,
+      error
+    };
   }
 } 

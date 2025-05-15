@@ -465,7 +465,15 @@ const AdminPage: React.FC = () => {
             <div className="mb-4 p-3 bg-green-900/30 border border-green-500 text-green-300 rounded-md">
               <div className="font-bold">Banner uploaded successfully!</div>
               <div className="text-sm mt-1">
-                The banner has been uploaded and will appear on the login and register pages.
+                {bannerUploadError ? (
+                  <div className="text-yellow-300">
+                    <strong>⚠️ Warning:</strong> {bannerUploadError}
+                  </div>
+                ) : (
+                  <div>
+                    The banner has been uploaded and will appear on the login and register pages for all users.
+                  </div>
+                )}
                 {localStorage.getItem(`login_banner${selectedBanner}`) && (
                   <div className="mt-2">
                     Banner URL: <span className="text-xs break-all">{localStorage.getItem(`login_banner${selectedBanner}`)}</span>
@@ -564,11 +572,17 @@ const AdminPage: React.FC = () => {
                           const settingKey = `login_banner${selectedBanner}`;
                           console.log(`Updating site setting: ${settingKey}`);
                           
-                          const { error: updateError } = await updateSiteSetting(settingKey, publicUrl);
+                          const { error: updateError, success } = await updateSiteSetting(settingKey, publicUrl);
                             
                           if (updateError) {
                             console.error("Settings update error:", updateError);
-                            throw updateError;
+                            setBannerUploadSuccess(true); // Still show success but with warning
+                            setBannerUploadError("Warning: Banner uploaded to storage but failed to update database. This banner may only appear on your device. Other users might not see it.");
+                            // Don't throw so the process completes with warning
+                          } else {
+                            console.log("Banner updated successfully");
+                            setBannerUploadSuccess(true);
+                            setBannerUploadError(null);
                           }
                           
                           // Update preview state to force re-render
@@ -577,8 +591,6 @@ const AdminPage: React.FC = () => {
                             [`banner${selectedBanner}`]: publicUrl
                           }));
                           
-                          console.log("Banner updated successfully");
-                          setBannerUploadSuccess(true);
                         } catch (err: any) {
                           console.error('Error uploading banner:', err);
                           setBannerUploadError(err.message || 'Failed to upload banner. Check console for details.');

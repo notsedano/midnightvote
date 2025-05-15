@@ -32,57 +32,78 @@ const LoginPage: React.FC = () => {
   useEffect(() => {
     const fetchBannerImages = async () => {
       try {
-        // First check localStorage
+        console.log("Fetching banner images for login page");
+        
+        // Try to fetch from database first - most reliable source across devices
+        try {
+          console.log("Attempting to fetch banner images from database");
+          const { data, error } = await supabase
+            .from('site_settings')
+            .select('key, value')
+            .in('key', ['login_banner1', 'login_banner2'])
+            .order('key');
+            
+          if (error) {
+            console.error('Error fetching banner images from database:', error);
+            throw error;
+          }
+          
+          if (data && data.length > 0) {
+            console.log("Banner data retrieved from database:", data);
+            const images = {
+              banner1: '',
+              banner2: ''
+            };
+            
+            data.forEach(item => {
+              if (item.key === 'login_banner1') {
+                images.banner1 = item.value;
+                // Also save to localStorage for future use
+                if (item.value) localStorage.setItem('login_banner1', item.value);
+              } else if (item.key === 'login_banner2') {
+                images.banner2 = item.value;
+                // Also save to localStorage for future use
+                if (item.value) localStorage.setItem('login_banner2', item.value);
+              }
+            });
+            
+            setBannerImages(images);
+            console.log("Banner images updated from database:", images);
+            return; // Exit early as we got data from the database
+          } else {
+            console.log("No banner data found in database");
+          }
+        } catch (dbError) {
+          console.error('Database fetch failed, falling back to localStorage:', dbError);
+        }
+        
+        // Fall back to localStorage if database fetch failed or returned no data
         const localBanner1 = localStorage.getItem('login_banner1');
         const localBanner2 = localStorage.getItem('login_banner2');
         
         if (localBanner1 || localBanner2) {
+          console.log("Using banner images from localStorage");
           // Use localStorage values if available
           setBannerImages({
             banner1: localBanner1 || '',
             banner2: localBanner2 || ''
           });
         } else {
-          // Fall back to database if localStorage is empty
-          try {
-            const { data, error } = await supabase
-              .from('site_settings')
-              .select('key, value')
-              .in('key', ['login_banner1', 'login_banner2'])
-              .order('key');
-              
-            if (error) throw error;
-            
-            if (data && data.length > 0) {
-              const images = {
-                banner1: '',
-                banner2: ''
-              };
-              
-              data.forEach(item => {
-                if (item.key === 'login_banner1') {
-                  images.banner1 = item.value;
-                  // Also save to localStorage for future use
-                  if (item.value) localStorage.setItem('login_banner1', item.value);
-                } else if (item.key === 'login_banner2') {
-                  images.banner2 = item.value;
-                  // Also save to localStorage for future use
-                  if (item.value) localStorage.setItem('login_banner2', item.value);
-                }
-              });
-              
-              setBannerImages(images);
-            }
-          } catch (dbError) {
-            console.error('Error fetching banner images from database:', dbError);
-          }
+          console.log("No banner images found in localStorage or database");
         }
       } catch (error) {
-        console.error('Error fetching banner images:', error);
+        console.error('Error in banner image fetch process:', error);
       }
     };
     
     fetchBannerImages();
+    
+    // Add a secondary fetch after a delay to handle slow database connections
+    const timeoutId = setTimeout(() => {
+      fetchBannerImages();
+    }, 3000);
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Fetch user's IP address
