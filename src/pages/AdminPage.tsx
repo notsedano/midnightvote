@@ -25,6 +25,7 @@ const AdminPage: React.FC = () => {
     name: '',
     genre: '',
     youtube_url: '',
+    instagram_username: '',
   });
   const [selectedBanner, setSelectedBanner] = useState<number>(1); // 1 or 2
   const [bannerUrls, setBannerUrls] = useState<Record<string, string>>({
@@ -110,6 +111,7 @@ const AdminPage: React.FC = () => {
       name: candidate.name || '',
       genre: candidate.genre || '',
       youtube_url: candidate.youtube_url || '',
+      instagram_username: candidate.instagram_username || '',
     });
   };
   
@@ -119,6 +121,7 @@ const AdminPage: React.FC = () => {
       name: '',
       genre: '',
       youtube_url: '',
+      instagram_username: '',
     });
   };
   
@@ -409,6 +412,23 @@ const AdminPage: React.FC = () => {
                         </div>
                       </div>
                       
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Instagram Profile URL</label>
+                        <div className="flex">
+                          <input
+                            type="text"
+                            name="instagram_username"
+                            value={editFormData.instagram_username}
+                            onChange={handleEditFormChange}
+                            className="flex-1 bg-black border border-[#9ACD32]/50 text-white px-3 py-2 rounded-l-md focus:outline-none focus:border-[#9ACD32]"
+                            placeholder="https://www.instagram.com/username"
+                          />
+                          <div className="bg-[#9ACD32]/10 border-t border-r border-b border-[#9ACD32]/50 flex items-center px-3 rounded-r-md">
+                            <LinkIcon size={16} className="text-[#9ACD32]" />
+                          </div>
+                        </div>
+                      </div>
+                      
                       {editFormData.youtube_url && getYouTubeThumbnail(editFormData.youtube_url) && (
                         <div className="border border-[#9ACD32]/30 p-1 mt-2">
                           <img 
@@ -442,9 +462,14 @@ const AdminPage: React.FC = () => {
                 <div>
                       <div className="flex items-center mb-1">
                         <div className="text-white mr-2">{candidate.name}</div>
-                        {candidate.youtube_url && (
-                          <Youtube size={14} className="text-[#9ACD32] opacity-70" />
-                        )}
+                        <div className="flex">
+                          {candidate.youtube_url && (
+                            <Youtube size={14} className="text-[#9ACD32] opacity-70 mr-1" />
+                          )}
+                          {candidate.instagram_username && (
+                            <LinkIcon size={14} className="text-[#9ACD32] opacity-70" />
+                          )}
+                        </div>
                       </div>
                       <div className="text-xs text-gray-400">
                         Genre: {candidate.genre || "Not set"} | Votes: {voteCounts[candidate.id] || 0}
