@@ -215,7 +215,7 @@ const VotePage: React.FC = () => {
             <div className="flex items-center text-[#9ACD32] font-mono">
               {userVote 
                 ? <span className="flex items-center"><Headphones size={16} className="mr-2" /> You've voted for {userVote ? candidates.find(c => c.id === userVote.candidate_id)?.name : 'a DJ'}</span>
-                : <span className="flex items-center"><Music size={16} className="mr-2" /> Hold a DJ card for 1.5s to vote</span>
+                : <span className="flex items-center"><Music size={16} className="mr-2" /> Hold a DJ card for 3.5s to vote</span>
               }
             </div>
           </div>
