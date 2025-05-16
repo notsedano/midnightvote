@@ -8,7 +8,7 @@ import LoadingScreen from '../components/LoadingScreen';
 import VoteNotification from '../components/VoteNotification';
 import { motion } from 'framer-motion';
 import { Music, Info, Headphones, Terminal, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase';
@@ -235,8 +235,29 @@ const VotePage: React.FC = () => {
           
           {userVote && (
             <div className="border-t border-[#9ACD32]/30 pt-3 mt-2">
-              <div className="flex items-center justify-center px-4 py-2 bg-black/50 border border-[#9ACD32]/30 text-[#9ACD32] font-mono text-sm rounded-md w-full md:w-auto">
-                <span>YOUR VOTE HAS BEEN RECORDED ONCHAIN {candidates.find(c => c.id === userVote.candidate_id)?.name.toUpperCase()}</span>
+              <div className="flex flex-col items-center px-4 py-3 bg-black/80 border border-[#9ACD32]/30 text-[#9ACD32] font-mono text-sm rounded-md w-full">
+                <span className="mb-2">YOUR VOTE HAS BEEN RECORDED ONCHAIN</span>
+                <Link 
+                  to={`/explorer?tx=${userVote.transaction_id}`} 
+                  className="w-full max-w-md hover:text-white"
+                >
+                  <div className="px-4 py-2 border border-[#9ACD32]/40 bg-[#9ACD32]/5 rounded-md hover:bg-[#9ACD32]/10 transition-colors flex items-center justify-between group">
+                    <div>
+                      <span className="text-sm font-bold flex items-center">
+                        <Terminal size={14} className="mr-1.5" />
+                        VIEW TRANSACTION DETAILS
+                      </span>
+                      <div className="flex flex-col text-xs text-[#9ACD32]/70 mt-1.5 space-y-1">
+                        <span className="truncate">#txn-{userVote.transaction_id.substring(0, 6)}...{userVote.transaction_id.substring(userVote.transaction_id.length - 4)}</span>
+                        <span className="truncate">#voter-{userVote.user_id && userVote.user_id.substring(0, 4)}...</span>
+                        <span className="truncate">#time-{new Date(userVote.created_at).toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                    <div className="w-6 h-6 rounded-full border border-[#9ACD32]/50 flex items-center justify-center group-hover:bg-[#9ACD32]/20 transition-colors">
+                      <span className="transform group-hover:translate-x-0.5 transition-transform">→</span>
+                    </div>
+                  </div>
+                </Link>
               </div>
             </div>
           )}
@@ -258,6 +279,7 @@ const VotePage: React.FC = () => {
                   genre={candidate.genre}
                   image={candidate.image_url}
                   youtube_url={candidate.youtube_url}
+                  instagram_username={candidate.instagram_username}
                   voteCount={voteCounts[candidate.id] || 0}
                   totalVotes={totalVotes}
                   hasVoted={!!userVote}

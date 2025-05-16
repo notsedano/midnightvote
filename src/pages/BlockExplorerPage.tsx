@@ -4,6 +4,7 @@ import Navigation from '../components/Navigation';
 import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
 import { Database, Hash, Clock, User, Terminal } from 'lucide-react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 
 type Transaction = {
   id: string;
@@ -17,6 +18,8 @@ const BlockExplorerPage: React.FC = () => {
   const { votes, candidates, isLoading } = useVoting();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+  const [searchParams] = useSearchParams();
+  const txId = searchParams.get('tx');
   
   // Process votes into transactions
   useEffect(() => {
@@ -33,8 +36,16 @@ const BlockExplorerPage: React.FC = () => {
       }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
       setTransactions(txs);
+      
+      // If a transaction ID is provided in the URL, select that transaction
+      if (txId) {
+        const transaction = txs.find(tx => tx.id === txId);
+        if (transaction) {
+          setSelectedTx(transaction);
+        }
+      }
     }
-  }, [votes, candidates]);
+  }, [votes, candidates, txId]);
   
   if (isLoading) {
     return <LoadingScreen />;
@@ -82,33 +93,43 @@ const BlockExplorerPage: React.FC = () => {
               <div className="space-y-3 mt-4">
                 <div className="flex items-start space-x-2">
                   <Hash size={16} className="text-[#9ACD32] mt-1 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-gray-400">Transaction ID</p>
-                    <p className="text-white break-all">{selectedTx.id}</p>
+                  <div className="w-full">
+                    <p className="text-xs text-gray-400 mb-1">Transaction ID</p>
+                    <div className="p-2 bg-[#9ACD32]/5 border border-[#9ACD32]/20 rounded-md">
+                      <p className="text-[#9ACD32] font-mono break-all text-sm">
+                        #txn-{selectedTx.id}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 
                 <div className="flex items-start space-x-2">
                   <User size={16} className="text-[#9ACD32] mt-1 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-gray-400">Voter ID</p>
-                    <p className="text-white break-all">{selectedTx.user_id}</p>
+                  <div className="w-full">
+                    <p className="text-xs text-gray-400 mb-1">Voter ID</p>
+                    <div className="p-2 bg-[#9ACD32]/5 border border-[#9ACD32]/20 rounded-md">
+                      <p className="text-[#9ACD32] font-mono break-all text-sm">
+                        #voter-{selectedTx.user_id}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 
                 <div className="flex items-start space-x-2">
                   <Clock size={16} className="text-[#9ACD32] mt-1 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs text-gray-400">Timestamp</p>
-                    <p className="text-white">
-                      {new Date(selectedTx.timestamp).toLocaleString()}
-                    </p>
+                  <div className="w-full">
+                    <p className="text-xs text-gray-400 mb-1">Timestamp</p>
+                    <div className="p-2 bg-[#9ACD32]/5 border border-[#9ACD32]/20 rounded-md">
+                      <p className="text-[#9ACD32] font-mono text-sm">
+                        #time-{new Date(selectedTx.timestamp).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="p-3 bg-black border border-[#9ACD32]/20 rounded-md">
+                <div className="p-3 bg-black border border-[#9ACD32]/30 rounded-md">
                   <p className="text-xs text-gray-400 mb-1">Vote Cast For</p>
-                  <p className="text-lg text-[#9ACD32]">{selectedTx.candidateName}</p>
+                  <p className="text-lg text-[#9ACD32] font-bold">{selectedTx.candidateName}</p>
                 </div>
               </div>
             ) : (
@@ -130,22 +151,34 @@ const BlockExplorerPage: React.FC = () => {
           </div>
           
           {transactions.length > 0 ? (
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-2">
               {transactions.map((tx) => (
                 <div
                   key={tx.id}
-                  className={`p-2 border hover:border-[#9ACD32] cursor-pointer transition-colors duration-200 text-center ${
+                  className={`p-3 border hover:border-[#9ACD32] cursor-pointer transition-colors duration-200 ${
                     selectedTx?.id === tx.id 
                       ? 'border-[#9ACD32] bg-[#9ACD32]/10' 
                       : 'border-gray-800 bg-black hover:bg-[#9ACD32]/5'
                   }`}
                   onClick={() => setSelectedTx(tx)}
                 >
-                  <div className="text-[#9ACD32] text-xs mb-1">
-                    {tx.id.substring(0, 4)}...{tx.id.substring(tx.id.length - 4)}
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[#9ACD32] font-mono text-xs font-bold">
+                      #{tx.id.substring(0, 4)}...{tx.id.substring(tx.id.length - 4)}
+                    </div>
+                    <div className="px-1.5 py-0.5 bg-[#9ACD32]/10 border border-[#9ACD32]/20 rounded-sm text-[10px] text-[#9ACD32]">
+                      BLOCK
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {new Date(tx.timestamp).toLocaleDateString()}
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">DJ: </span>
+                    <span className="text-[#9ACD32] truncate ml-1">{tx.candidateName}</span>
+                  </div>
+                  <div className="flex justify-between text-xs mt-1">
+                    <span className="text-gray-400">Time: </span>
+                    <span className="text-[#9ACD32]/80 truncate ml-1">
+                      {new Date(tx.timestamp).toLocaleTimeString()}
+                    </span>
                   </div>
                 </div>
               ))}

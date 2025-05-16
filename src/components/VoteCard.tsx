@@ -9,6 +9,7 @@ interface VoteCardProps {
   genre: string;
   image?: string | null;
   youtube_url?: string | null;
+  instagram_username?: string | null;
   voteCount?: number;
   totalVotes?: number;
   hasVoted: boolean;
@@ -50,6 +51,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
   genre,
   image,
   youtube_url,
+  instagram_username,
   voteCount = 0,
   totalVotes = 0,
   hasVoted,
@@ -64,7 +66,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
   const voteTriggeredRef = useRef(false);
   const touchStartTimeRef = useRef<number>(0);
   const touchThreshold = 300; // 300ms threshold to differentiate tap vs hold
-  const minHoldTime = 1500; // 1.5 seconds minimum hold time for voting
+  const minHoldTime = 3500; // 3.5 seconds minimum hold time for voting
   const videoModalRef = useRef<HTMLDivElement>(null);
   
   const percentage = totalVotes > 0 ? (voteCount / totalVotes) * 100 : 0;
@@ -326,6 +328,40 @@ const VoteCard: React.FC<VoteCardProps> = ({
           {genre || "EDM/HOUSE"}
         </div>
         
+        {/* Instagram Link - Moved here */}
+        {instagram_username && (
+          <div className="flex mb-3">
+            <a 
+              href={instagram_username.startsWith('http') ? instagram_username : `https://instagram.com/${instagram_username}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              className="flex items-center text-[#9ACD32] hover:text-white transition-colors text-xs"
+              aria-label="Instagram profile"
+            >
+              <span className="mr-1">View Profile</span>
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="14" 
+                height="14" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="feather feather-instagram"
+              >
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+            </a>
+          </div>
+        )}
+        
         {/* Video thumbnail */}
         <div 
           className="video-thumbnail w-full h-48 bg-black border border-[#9ACD32]/30 flex items-center justify-center mb-4 relative overflow-hidden"
@@ -374,15 +410,26 @@ const VoteCard: React.FC<VoteCardProps> = ({
       {isVoting && (
         <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-10">
           <div className="text-center">
-            <div className="mb-4 font-mono text-[#9ACD32]">
+            <div className="mb-4 font-mono text-[#9ACD32] text-lg font-bold">
               {voteProgress < 100 ? 'HOLD TO VOTE' : 'VOTE CONFIRMED'}
             </div>
-            <div className="w-32 h-2 bg-[#9ACD32]/20 rounded-full mx-auto mb-2">
+            {/* Enhanced vote percentage display */}
+            <div className="font-mono text-sm text-[#9ACD32] mb-3">
+              UPLOADING VOTE: {voteProgress.toFixed(0)}%
+            </div>
+            {/* Enhanced progress bar with glow effect */}
+            <div className="w-48 h-3 bg-[#9ACD32]/20 rounded-full mx-auto mb-4 overflow-hidden border border-[#9ACD32]/40">
               <div 
-                className="h-full bg-[#9ACD32] rounded-full" 
+                className="h-full bg-gradient-to-r from-[#9ACD32]/70 to-[#9ACD32] rounded-full shadow-[0_0_10px_rgba(154,205,50,0.5)]" 
                 style={{ width: `${voteProgress}%` }}
               />
             </div>
+            {/* Cancel instruction */}
+            {voteProgress < 100 && (
+              <div className="text-xs text-[#9ACD32]/70 border border-[#9ACD32]/30 px-3 py-1.5 rounded-sm animate-pulse inline-block">
+                RELEASE TO CANCEL VOTE
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -397,13 +444,28 @@ const VoteCard: React.FC<VoteCardProps> = ({
             exit={{ opacity: 0 }}
           >
             <motion.div 
-              className="text-center p-4 bg-black/80 rounded-md border border-[#9ACD32]"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
+              className="text-center p-6 bg-black/80 rounded-md border border-[#9ACD32] shadow-[0_0_20px_rgba(154,205,50,0.3)]"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-              <div className="font-mono text-[#9ACD32] text-lg mb-2">VOTE CONFIRMED</div>
-              <div className="text-gray-400 text-sm">Thank you for your vote!</div>
+              <motion.div 
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="font-mono text-[#9ACD32] text-xl mb-2 font-bold"
+              >
+                VOTE CONFIRMED
+              </motion.div>
+              <motion.div 
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-gray-300 text-sm"
+              >
+                Thank you for your vote!
+              </motion.div>
             </motion.div>
           </motion.div>
         )}
