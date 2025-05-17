@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight, Terminal } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Terminal, Facebook } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
 import LoadingScreen from '../components/LoadingScreen';
 
 const LoginPage: React.FC = () => {
-  const { signIn, user } = useAuth();
+  const { signIn, user, signInWithOAuth } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -199,6 +199,21 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  const handleFacebookLogin = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { error } = await signInWithOAuth('facebook');
+      if (error) throw error;
+      // Navigation is handled by the redirect in signInWithOAuth
+    } catch (err: any) {
+      console.error('Facebook login error:', err);
+      setError(err.message || 'Failed to sign in with Facebook. Please try again.');
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return <LoadingScreen message="Authenticating..." />;
   }
@@ -317,6 +332,24 @@ const LoginPage: React.FC = () => {
                       <ArrowRight className="mr-2" size={16} />
                       <span>SIGN IN</span>
                 </button>
+
+                <div className="relative flex items-center py-2">
+                  <div className="flex-grow border-t border-[#9ACD32]/30"></div>
+                  <span className="flex-shrink mx-4 text-xs text-gray-400">OR</span>
+                  <div className="flex-grow border-t border-[#9ACD32]/30"></div>
+                </div>
+
+                <button
+                  type="button"
+                  className="bg-[#1877F2]/10 border border-[#1877F2]/40 text-white/70 font-mono w-full py-2 rounded-md flex items-center justify-center hover:bg-[#1877F2]/10 opacity-80 cursor-not-allowed"
+                  disabled={true}
+                >
+                  <Facebook className="mr-2 text-[#1877F2]/80" size={16} />
+                  <span>SIGN IN WITH FACEBOOK</span>
+                </button>
+                <div className="text-center mt-1">
+                  <span className="text-xs font-mono text-[#9ACD32]/70 tracking-wider">COMING SOON</span>
+                </div>
               </form>
               
               <div className="mt-4 text-center text-xs text-gray-400">

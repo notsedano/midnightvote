@@ -13,6 +13,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updateUserIp: (userId: string, ipAddress: string) => Promise<void>;
+  signInWithOAuth: (provider: 'facebook' | 'google' | 'github' | 'twitter') => Promise<{ error: any }>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -26,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
   resetPassword: async () => ({ error: null }),
   updateUserIp: async () => {},
+  signInWithOAuth: async () => ({ error: null }),
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -152,16 +154,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
         if (error) console.error('Error updating profile metadata:', error);
       } else {
-        // If the table exists, upsert the IP record
-        const { error } = await supabase
+        // First check if a record for this user/IP combo already exists
+        const { data: existingRecord, error: findError } = await supabase
           .from('profiles_ip')
-          .upsert({ 
-            user_id: userId, 
-            ip_address: ipAddress, 
-            last_login: new Date().toISOString() 
-          });
+          .select('id, login_count')
+          .eq('user_id', userId)
+          .eq('ip_address', ipAddress)
+          .maybeSingle();
           
-        if (error) console.error('Error updating profiles_ip:', error);
+        if (findError) {
+          console.error('Error checking existing IP record:', findError);
+          return;
+        }
+        
+        if (existingRecord) {
+          // Update existing record
+          const { error: updateError } = await supabase
+            .from('profiles_ip')
+            .update({ 
+              login_count: (existingRecord.login_count || 0) + 1, 
+              last_login: new Date().toISOString() 
+            })
+            .eq('id', existingRecord.id);
+            
+          if (updateError) console.error('Error updating existing IP record:', updateError);
+          console.log(`Updated IP record: User ${userId} with IP ${ipAddress}, count: ${(existingRecord.login_count || 0) + 1}`);
+        } else {
+          // Insert new record
+          const { error: insertError } = await supabase
+            .from('profiles_ip')
+            .insert({ 
+              user_id: userId, 
+              ip_address: ipAddress, 
+              created_at: new Date().toISOString(),
+              last_login: new Date().toISOString(),
+              login_count: 1
+            });
+            
+          if (insertError) console.error('Error inserting new IP record:', insertError);
+          console.log(`Created new IP record: User ${userId} with IP ${ipAddress}`);
+        }
       }
     } catch (e) {
       console.error('Error in updateUserIp:', e);
@@ -235,6 +267,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
+  const signInWithOAuth = async (provider: 'facebook' | 'google' | 'github' | 'twitter') => {
+    try {
+      // Check if we have a stored registration IP in sessionStorage (set in RegisterPage)
+      const storedIp = sessionStorage.getItem('registration_ip');
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin + '/vote'
+        }
+      });
+      
+      // Add special event listener to catch the user coming back from OAuth
+      if (!error) {
+        // Store provider type for later use during the callback
+        if (storedIp) {
+          sessionStorage.setItem('oauth_provider', provider);
+        }
+        
+        // Listen for the auth state change that happens after redirect
+        const handleAuthChange = (event: string, session: Session | null) => {
+          if (event === 'SIGNED_IN' && session?.user) {
+            const storedIp = sessionStorage.getItem('registration_ip');
+            const oauthProvider = sessionStorage.getItem('oauth_provider');
+            
+            // Only proceed if this is the same provider and we have an IP
+            if (storedIp && oauthProvider === provider) {
+              // Update user IP information
+              updateUserIp(session.user.id, storedIp);
+              
+              // Clean up sessionStorage
+              sessionStorage.removeItem('registration_ip');
+              sessionStorage.removeItem('registration_time');
+              sessionStorage.removeItem('oauth_provider');
+            }
+          }
+        };
+        
+        // Add listener temporarily
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthChange);
+        
+        // Clean up the temporary listener after a short delay
+        setTimeout(() => {
+          subscription.unsubscribe();
+        }, 10000); // 10 second timeout
+      }
+      
+      return { error };
+    } catch (err) {
+      console.error(`Error during ${provider} OAuth sign-in:`, err);
+      return { error: err };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       session,
@@ -247,6 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signOut,
       resetPassword,
       updateUserIp,
+      signInWithOAuth
     }}>
       {children}
     </AuthContext.Provider>
