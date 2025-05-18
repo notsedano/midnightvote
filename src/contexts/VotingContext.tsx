@@ -170,32 +170,56 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       logger.info('Fetching votes', { component: 'VotingContext' });
       
-      const { data, error } = await supabase
-        .from('votes')
-        .select('*');
+      // We'll fetch votes in batches to overcome the 1000 default limit
+      let allVotes: Vote[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMoreData = true;
       
-      if (error) {
-        console.error("ERROR FETCHING VOTES", error);
-        throw error;
+      while (hasMoreData) {
+        console.log(`Fetching votes batch ${page + 1}...`);
+        
+        const { data, error, count } = await supabase
+          .from('votes')
+          .select('*', { count: 'exact' })
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+        if (error) {
+          console.error(`ERROR FETCHING VOTES BATCH ${page + 1}`, error);
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          allVotes = [...allVotes, ...data];
+          console.log(`Batch ${page + 1} returned ${data.length} votes`);
+          page++;
+          
+          // Check if we've received fewer records than the page size
+          if (data.length < pageSize) {
+            hasMoreData = false;
+          }
+        } else {
+          hasMoreData = false;
+        }
       }
       
       console.log("VOTES FETCHED", { 
-        count: data?.length || 0, 
-        votes: data
+        count: allVotes.length, 
+        batches: page
       });
       
       logger.info('Votes fetched successfully', { 
         component: 'VotingContext',
-        data: { count: data?.length || 0 }
+        data: { count: allVotes.length }
       });
       
-      setVotes(data || []);
+      setVotes(allVotes);
       
       // Calculate vote counts
       const counts: Record<number, number> = {};
       let total = 0;
       
-      data?.forEach(vote => {
+      allVotes.forEach(vote => {
         counts[vote.candidate_id] = (counts[vote.candidate_id] || 0) + 1;
         total++;
       });
@@ -207,7 +231,7 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       
       // Check if user's vote is still in the list after refresh
       if (user) {
-        const userVoteAfterRefresh = data?.find(v => v.user_id === user.id);
+        const userVoteAfterRefresh = allVotes.find(v => v.user_id === user.id);
         console.log("USER VOTE AFTER REFRESH", { 
           userId: user.id,
           hasVote: !!userVoteAfterRefresh,
