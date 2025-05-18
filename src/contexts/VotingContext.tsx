@@ -20,6 +20,7 @@ type Vote = {
   candidate_id: number;
   created_at: string;
   transaction_id: string;
+  ip_address?: string;
 };
 
 type VotingContextType = {
@@ -288,10 +289,13 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         throw new Error('Invalid candidate selected');
       }
       
-      // Insert vote
+      // Get the user's IP from localStorage if available (saved during login)
+      let userIp = localStorage.getItem('user_ip') || '';
+      
+      // Insert vote with IP address
       logger.debug('Inserting vote record', { 
         component: 'VotingContext',
-        data: { userId: user.id, candidateId, transactionId }
+        data: { userId: user.id, candidateId, transactionId, ip: userIp }
       });
       
       const { error: voteError, data: voteData } = await supabase
@@ -299,7 +303,8 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .insert({
           user_id: user.id,
           candidate_id: candidateId,
-          transaction_id: transactionId
+          transaction_id: transactionId,
+          ip_address: userIp
         })
         .select()
         .single();
@@ -311,11 +316,6 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         });
         throw voteError;
       }
-      
-      logger.debug('Vote recorded successfully', { 
-        component: 'VotingContext',
-        data: voteData
-      });
       
       // Update profile has_voted status
       logger.debug('Updating profile has_voted status', { 

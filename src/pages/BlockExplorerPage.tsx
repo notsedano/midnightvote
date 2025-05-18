@@ -33,7 +33,7 @@ const BlockExplorerPage: React.FC = () => {
           candidate_id: vote.candidate_id,
           timestamp: vote.created_at,
           candidateName: candidate?.name || 'Unknown DJ',
-          ip_address: 'IP data will be available soon' // Static placeholder until we implement IP tracking
+          ip_address: vote.ip_address || 'IP not recorded' // Use actual IP from vote record if available
         };
       }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       

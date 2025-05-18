@@ -138,6 +138,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!userId || !ipAddress) return;
     
     try {
+      // Save IP to localStorage for use in other contexts (like voting)
+      localStorage.setItem('user_ip', ipAddress);
+      
       // Check if we have a profiles_ip table
       const { error: checkError } = await supabase
         .from('profiles_ip')
