@@ -123,7 +123,9 @@ const BlockExplorerPage: React.FC = () => {
                     <p className="text-xs text-gray-400 mb-1">IP Address</p>
                     <div className="p-2 bg-[#9ACD32]/5 border border-[#9ACD32]/20 rounded-md">
                       <p className="text-[#9ACD32] font-mono break-all text-sm">
-                        {selectedTx.ip_address || 'Not recorded'}
+                        {selectedTx.ip_address === 'IP not recorded' ? 
+                          'Anonymous (Vote cast before IP tracking)' : 
+                          selectedTx.ip_address}
                       </p>
                     </div>
                   </div>

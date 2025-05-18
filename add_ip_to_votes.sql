@@ -37,4 +37,4 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- You can run this function to backfill existing votes:
--- SELECT public.backfill_vote_ips(); 
+SELECT public.backfill_vote_ips(); 
