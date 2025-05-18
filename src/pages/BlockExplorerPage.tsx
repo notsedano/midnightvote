@@ -122,11 +122,33 @@ const BlockExplorerPage: React.FC = () => {
                   <div className="w-full">
                     <p className="text-xs text-gray-400 mb-1">IP Address</p>
                     <div className="p-2 bg-[#9ACD32]/5 border border-[#9ACD32]/20 rounded-md">
-                      <p className="text-[#9ACD32] font-mono break-all text-sm">
-                        {selectedTx.ip_address === 'IP not recorded' ? 
-                          'Anonymous (Vote cast before IP tracking)' : 
-                          selectedTx.ip_address}
-                      </p>
+                      {(!selectedTx.ip_address || selectedTx.ip_address === 'IP not recorded') ? (
+                        <div className="flex items-center">
+                          <p className="text-[#9ACD32] font-mono break-all text-sm">
+                            {Array(4).fill('').map((_, i) => (
+                              <span key={i} className="inline-block mx-0.5">
+                                {Array(3).fill('').map((_, j) => (
+                                  <span key={j} className="opacity-70">*</span>
+                                ))}
+                                <span className="mx-1 opacity-50">.</span>
+                              </span>
+                            ))}
+                          </p>
+                          <span className="text-[#9ACD32]/60 text-xs ml-2 border border-[#9ACD32]/30 px-1.5 rounded">ENCRYPTED</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center">
+                          <p className="text-[#9ACD32] font-mono break-all text-sm">
+                            {selectedTx.ip_address.split('.').map((octet, idx) => (
+                              <span key={idx}>
+                                {idx === 0 ? octet : '***'}
+                                {idx < 3 ? <span className="mx-0.5">.</span> : null}
+                              </span>
+                            ))}
+                          </p>
+                          <span className="text-[#9ACD32]/60 text-xs ml-2 border border-[#9ACD32]/30 px-1.5 rounded">PARTIAL</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

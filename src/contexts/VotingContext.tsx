@@ -292,21 +292,25 @@ export const VotingProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Get the user's IP from localStorage if available (saved during login)
       let userIp = localStorage.getItem('user_ip') || '';
       
-      // Log IP address status
+      // If no IP address in localStorage, fetch it directly
       if (!userIp) {
         console.warn('No IP address found in localStorage for user', user.id);
         
-        // Attempt to fetch IP as a fallback (this is async but we'll continue anyway)
-        fetch('https://api.ipify.org?format=json')
-          .then(response => response.json())
-          .then(data => {
-            if (data.ip) {
-              console.log('Retrieved IP address via API fallback:', data.ip);
-              localStorage.setItem('user_ip', data.ip);
-              // We won't wait for this, but it'll be available for future votes
-            }
-          })
-          .catch(err => console.error('Failed to fetch IP as fallback:', err));
+        try {
+          // Attempt to fetch IP in real time
+          const response = await fetch('https://api.ipify.org?format=json');
+          const data = await response.json();
+          
+          if (data && data.ip) {
+            console.log('Retrieved IP address via API in real time:', data.ip);
+            userIp = data.ip;
+            localStorage.setItem('user_ip', data.ip);
+          } else {
+            console.error('Failed to fetch IP address - API returned invalid data');
+          }
+        } catch (ipError) {
+          console.error('Error fetching IP address in real time:', ipError);
+        }
       } else {
         console.log('Found IP address in localStorage:', userIp);
       }

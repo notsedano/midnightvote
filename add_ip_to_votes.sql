@@ -36,5 +36,33 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- You can run this function to backfill existing votes:
+-- Create a trigger function to automatically fill missing IP addresses
+CREATE OR REPLACE FUNCTION public.set_vote_ip_trigger_fn()
+RETURNS trigger AS $$
+BEGIN
+  -- Only attempt to set IP if it's NULL in the newly inserted vote
+  IF NEW.ip_address IS NULL OR NEW.ip_address = '' THEN
+    -- Try to find an IP in the profiles_ip table for this user
+    UPDATE public.votes
+    SET ip_address = (
+      SELECT ip_address 
+      FROM public.profiles_ip 
+      WHERE user_id = NEW.user_id 
+      ORDER BY last_login DESC 
+      LIMIT 1
+    )
+    WHERE id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create the trigger that executes after a vote is inserted
+DROP TRIGGER IF EXISTS set_vote_ip ON public.votes;
+CREATE TRIGGER set_vote_ip
+AFTER INSERT ON public.votes
+FOR EACH ROW
+EXECUTE FUNCTION public.set_vote_ip_trigger_fn();
+
+-- Run this function to backfill existing votes:
 SELECT public.backfill_vote_ips(); 
