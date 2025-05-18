@@ -3,7 +3,7 @@ import { useVoting } from '../contexts/VotingContext';
 import Navigation from '../components/Navigation';
 import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
-import { Database, Hash, Clock, User, Terminal } from 'lucide-react';
+import { Database, Hash, Clock, User, Terminal, Globe } from 'lucide-react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 
 type Transaction = {
@@ -12,6 +12,7 @@ type Transaction = {
   candidate_id: number;
   timestamp: string;
   candidateName: string;
+  ip_address?: string;
 };
 
 const BlockExplorerPage: React.FC = () => {
@@ -31,7 +32,8 @@ const BlockExplorerPage: React.FC = () => {
           user_id: vote.user_id,
           candidate_id: vote.candidate_id,
           timestamp: vote.created_at,
-          candidateName: candidate?.name || 'Unknown DJ'
+          candidateName: candidate?.name || 'Unknown DJ',
+          ip_address: 'IP data will be available soon' // Static placeholder until we implement IP tracking
         };
       }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       
@@ -110,6 +112,18 @@ const BlockExplorerPage: React.FC = () => {
                     <div className="p-2 bg-[#9ACD32]/5 border border-[#9ACD32]/20 rounded-md">
                       <p className="text-[#9ACD32] font-mono break-all text-sm">
                         #voter-{selectedTx.user_id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-start space-x-2">
+                  <Globe size={16} className="text-[#9ACD32] mt-1 flex-shrink-0" />
+                  <div className="w-full">
+                    <p className="text-xs text-gray-400 mb-1">IP Address</p>
+                    <div className="p-2 bg-[#9ACD32]/5 border border-[#9ACD32]/20 rounded-md">
+                      <p className="text-[#9ACD32] font-mono break-all text-sm">
+                        {selectedTx.ip_address || 'Not recorded'}
                       </p>
                     </div>
                   </div>
