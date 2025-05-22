@@ -21,10 +21,16 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // If already logged in, redirect to vote page
+  // If already logged in, redirect to vote page or results page if voting ended
   useEffect(() => {
     if (user) {
-      navigate('/vote');
+      // Check if voting has ended
+      const votingEnded = localStorage.getItem('voting_ended') === 'true';
+      if (votingEnded) {
+        navigate('/results');
+      } else {
+        navigate('/vote');
+      }
     }
   }, [user, navigate]);
 
@@ -137,7 +143,14 @@ const LoginPage: React.FC = () => {
         if (response.ok) {
           const result = await response.json();
           console.log("Auth proxy login success");
-          navigate('/vote');
+          
+          // Check if voting has ended
+          const votingEnded = localStorage.getItem('voting_ended') === 'true';
+          if (votingEnded) {
+            navigate('/results');
+          } else {
+            navigate('/vote');
+          }
           return;
         }
       } catch (proxyError) {
@@ -176,8 +189,10 @@ const LoginPage: React.FC = () => {
           localStorage.setItem('sb-refresh-token', data.refresh_token);
           localStorage.setItem('sb-access-token', data.access_token);
           
+          // Check if voting has ended before redirecting
+          const votingEnded = localStorage.getItem('voting_ended') === 'true';
           // Reload the page to pick up the auth changes
-          window.location.href = '/vote';
+          window.location.href = votingEnded ? '/results' : '/vote';
           return;
         } else {
           throw new Error(`Status ${response.status}: ${await response.text()}`);
@@ -190,7 +205,13 @@ const LoginPage: React.FC = () => {
       const { error } = await signIn(email, password, userIp);
       if (error) throw error;
       
-      navigate('/vote');
+      // Check if voting has ended
+      const votingEnded = localStorage.getItem('voting_ended') === 'true';
+      if (votingEnded) {
+        navigate('/results');
+      } else {
+        navigate('/vote');
+      }
     } catch (err: any) {
       console.error('Login error details:', err);
       setError(err.message || 'Failed to sign in. Please try again.');
