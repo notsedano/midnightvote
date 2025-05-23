@@ -21,16 +21,10 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // If already logged in, redirect to vote page or results page if voting ended
+  // If already logged in, redirect to vote page always
   useEffect(() => {
     if (user) {
-      // Check if voting has ended
-      const votingEnded = localStorage.getItem('voting_ended') === 'true';
-      if (votingEnded) {
-        navigate('/results');
-      } else {
-        navigate('/vote');
-      }
+      navigate('/vote');
     }
   }, [user, navigate]);
 
@@ -144,13 +138,8 @@ const LoginPage: React.FC = () => {
           const result = await response.json();
           console.log("Auth proxy login success");
           
-          // Check if voting has ended
-          const votingEnded = localStorage.getItem('voting_ended') === 'true';
-          if (votingEnded) {
-            navigate('/results');
-          } else {
-            navigate('/vote');
-          }
+          // Always redirect to vote page now
+          navigate('/vote');
           return;
         }
       } catch (proxyError) {
@@ -189,10 +178,8 @@ const LoginPage: React.FC = () => {
           localStorage.setItem('sb-refresh-token', data.refresh_token);
           localStorage.setItem('sb-access-token', data.access_token);
           
-          // Check if voting has ended before redirecting
-          const votingEnded = localStorage.getItem('voting_ended') === 'true';
-          // Reload the page to pick up the auth changes
-          window.location.href = votingEnded ? '/results' : '/vote';
+          // Always redirect to vote page
+          window.location.href = '/vote';
           return;
         } else {
           throw new Error(`Status ${response.status}: ${await response.text()}`);
@@ -205,13 +192,8 @@ const LoginPage: React.FC = () => {
       const { error } = await signIn(email, password, userIp);
       if (error) throw error;
       
-      // Check if voting has ended
-      const votingEnded = localStorage.getItem('voting_ended') === 'true';
-      if (votingEnded) {
-        navigate('/results');
-      } else {
-        navigate('/vote');
-      }
+      // Always redirect to vote page
+      navigate('/vote');
     } catch (err: any) {
       console.error('Login error details:', err);
       setError(err.message || 'Failed to sign in. Please try again.');

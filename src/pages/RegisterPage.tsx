@@ -179,16 +179,10 @@ const RegisterPage: React.FC = () => {
   const { signUp, user, signInWithOAuth } = useAuth();
   const navigate = useNavigate();
   
-  // If already logged in, redirect to vote page or results if voting has ended
+  // If already logged in, redirect to vote page
   React.useEffect(() => {
     if (user) {
-      // Check if voting has ended
-      const votingEnded = localStorage.getItem('voting_ended') === 'true';
-      if (votingEnded) {
-        navigate('/results');
-      } else {
-        navigate('/vote');
-      }
+      navigate('/vote');
     }
   }, [user, navigate]);
 
@@ -273,9 +267,8 @@ const RegisterPage: React.FC = () => {
           // Update IP directly since user is confirmed immediately
           await updateUserIp(data.user.id, userIp);
         }
-        // Check if voting has ended
-        const votingEnded = localStorage.getItem('voting_ended') === 'true';
-        navigate(votingEnded ? '/results' : '/vote');
+        // Always redirect to vote page
+        navigate('/vote');
       }
     } catch (err: any) {
       console.error('Error signing up:', err);

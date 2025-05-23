@@ -9,8 +9,9 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Terminal } from 'lucide-react';
+import { Terminal, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { AIScoreData } from '../lib/aiScoreUtils';
 
 ChartJS.register(
   CategoryScale,
@@ -24,21 +25,58 @@ ChartJS.register(
 interface VoteChartProps {
   candidates: any[];
   voteCounts: Record<number, number>;
+  aiScores?: Record<number, AIScoreData>;
 }
 
-const VoteChart: React.FC<VoteChartProps> = ({ candidates, voteCounts }) => {
+// Get AI Score color based on score
+const getAIScoreColor = (score: number) => {
+  if (score >= 90) return 'rgba(74, 222, 128, 0.9)'; // green-400
+  if (score >= 85) return 'rgba(96, 165, 250, 0.9)'; // blue-400
+  if (score >= 80) return 'rgba(45, 212, 191, 0.9)'; // teal-400
+  return 'rgba(250, 204, 21, 0.9)'; // yellow-400
+};
+
+// Get AI Score border color based on score
+const getAIScoreBorderColor = (score: number) => {
+  if (score >= 90) return 'rgba(74, 222, 128, 1)'; // green-400
+  if (score >= 85) return 'rgba(96, 165, 250, 1)'; // blue-400
+  if (score >= 80) return 'rgba(45, 212, 191, 1)'; // teal-400
+  return 'rgba(250, 204, 21, 1)'; // yellow-400
+};
+
+const VoteChart: React.FC<VoteChartProps> = ({ candidates, voteCounts, aiScores = {} }) => {
+  // Log AI scores for debugging
+  console.log("Chart AI Scores:", 
+    candidates.map(c => ({ id: c.id, name: c.name, score: aiScores[c.id]?.score || 85 })));
+  
   const chartData = {
     labels: candidates.map(c => c.name),
     datasets: [
       {
-        label: 'Votes',
+        label: 'Total Votes',
         data: candidates.map(c => voteCounts[c.id] || 0),
         backgroundColor: '#9ACD32',
         borderColor: '#9ACD32',
         borderWidth: 1,
         hoverBackgroundColor: '#FFFFFF',
         hoverBorderColor: '#FFFFFF',
+        barPercentage: 0.7,
       },
+      {
+        label: 'AI Score',
+        data: candidates.map(c => {
+          const score = aiScores[c.id]?.score || 85;
+          const voteCount = voteCounts[c.id] || 0;
+          // Return value based on the vote count percentage and AI score
+          return score > 0 ? voteCount * (score / 100) : voteCount * 0.85;
+        }),
+        backgroundColor: candidates.map(c => getAIScoreColor(aiScores[c.id]?.score || 85)),
+        borderColor: candidates.map(c => getAIScoreBorderColor(aiScores[c.id]?.score || 85)),
+        borderWidth: 2,
+        hoverBackgroundColor: candidates.map(c => getAIScoreBorderColor(aiScores[c.id]?.score || 85)),
+        hoverBorderColor: 'rgba(255, 255, 255, 1)',
+        barPercentage: 0.4,
+      }
     ],
   };
 
@@ -47,11 +85,21 @@ const VoteChart: React.FC<VoteChartProps> = ({ candidates, voteCounts }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false,
+        display: true,
+        position: 'top' as const,
+        labels: {
+          color: '#9ACD32',
+          font: {
+            family: 'monospace',
+            size: 10
+          },
+          boxWidth: 12,
+          padding: 10
+        }
       },
       title: {
         display: true,
-        text: 'Vote Distribution',
+        text: 'Vote Distribution & AI Score',
         color: '#9ACD32',
         font: {
           family: 'monospace',
@@ -71,9 +119,24 @@ const VoteChart: React.FC<VoteChartProps> = ({ candidates, voteCounts }) => {
           family: 'monospace',
         },
         padding: 10,
-        displayColors: false,
+        displayColors: true,
         borderColor: '#9ACD32',
         borderWidth: 1,
+        callbacks: {
+          label: function(context: any) {
+            const labelIndex = context.datasetIndex;
+            const value = context.raw;
+            const candidateId = candidates[context.dataIndex].id;
+            
+            if (labelIndex === 0) {
+              return `Total Votes: ${value}`;
+            } else if (labelIndex === 1) {
+              const aiScore = aiScores[candidateId]?.score || 85;
+              return `AI Score: ${aiScore}%`;
+            }
+            return '';
+          }
+        }
       },
     },
     scales: {
@@ -112,12 +175,13 @@ const VoteChart: React.FC<VoteChartProps> = ({ candidates, voteCounts }) => {
           <Terminal size={16} className="text-[#9ACD32]" />
           <span className="text-[#9ACD32] font-mono text-sm">VOTE DISTRIBUTION</span>
         </div>
-        <div className="text-xs text-[#9ACD32]/70">
+        <div className="flex items-center text-xs text-[#9ACD32]/70 space-x-2">
+          <ShieldCheck size={14} className="text-[#9ACD32]" />
           <motion.span
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            ANALYZING
+            AI SCORE ANALYSIS
           </motion.span>
         </div>
       </div>

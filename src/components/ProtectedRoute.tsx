@@ -58,10 +58,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
   
-  // If voting has ended and trying to access /vote, redirect to /results
-  if (votingEnded && window.location.pathname === '/vote') {
-    return <Navigate to="/results" replace />;
-  }
+  // No longer redirecting from /vote to /results when voting has ended
+  // This allows users to still view the vote page after voting ends
 
   return <>{children}</>;
 };

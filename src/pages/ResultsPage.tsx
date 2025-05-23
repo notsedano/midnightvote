@@ -27,6 +27,34 @@ import Layout from '../components/Layout';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 
+// Helper function to get YouTube thumbnail URL from YouTube video URL
+const getYouTubeThumbnail = (url: string | null) => {
+  if (!url) return null;
+  
+  // Extract video ID from different YouTube URL formats
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  
+  if (match && match[2].length === 11) {
+    const videoId = match[2];
+    // Return high-quality thumbnail
+    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  }
+  
+  return null;
+};
+
+// Helper function to get YouTube video ID from URL
+const getYouTubeVideoId = (url: string | null) => {
+  if (!url) return null;
+  
+  // Extract video ID from different YouTube URL formats
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 const ResultsPage: React.FC = () => {
   const { candidates, votes, voteCounts, totalVotes, isLoading, fetchVotes } = useVoting();
   const { user } = useAuth();
@@ -348,30 +376,62 @@ const ResultsPage: React.FC = () => {
                         </div>
                         
                         {/* DJ Profile */}
-                        <div className="flex items-center space-x-3 p-2 bg-black/50 border border-[#9ACD32]/30 rounded-sm">
-                          {candidate.image_url && (
-                            <div className="w-16 h-16 rounded-sm border border-[#9ACD32]/50 overflow-hidden">
-                              <img src={candidate.image_url} alt={candidate.name} className="w-full h-full object-cover" />
-                            </div>
-                          )}
-                          <div>
-                            <p className="text-[#9ACD32] font-mono text-lg">{candidate.name}</p>
-                            {candidate.genre && (
-                              <p className="text-[#9ACD32]/70 text-sm">{candidate.genre}</p>
+                        <div className="flex flex-col space-y-3 p-2 bg-black/50 border border-[#9ACD32]/30 rounded-sm">
+                          <div className="flex items-center space-x-3">
+                            {candidate.image_url && (
+                              <div className="w-16 h-16 rounded-sm border border-[#9ACD32]/50 overflow-hidden">
+                                <img src={candidate.image_url} alt={candidate.name} className="w-full h-full object-cover" />
+                              </div>
                             )}
-                            {candidate.youtube_url && (
+                            <div>
+                              <p className="text-[#9ACD32] font-mono text-lg">{candidate.name}</p>
+                              {candidate.genre && (
+                                <p className="text-[#9ACD32]/70 text-sm">{candidate.genre}</p>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* YouTube Thumbnail */}
+                          {candidate.youtube_url && (
+                            <div className="w-full border border-[#9ACD32]/30 bg-black/70 rounded-sm overflow-hidden">
                               <a 
                                 href={candidate.youtube_url} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-xs text-[#9ACD32]/70 hover:text-[#9ACD32] mt-1 inline-flex items-center"
+                                className="block relative group"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <Youtube size={14} className="mr-1" />
-                                Watch Performance
+                                <div className="flex items-center">
+                                  {/* Thumbnail with smaller aspect ratio */}
+                                  <div className="w-24 h-16 relative overflow-hidden flex-shrink-0">
+                                    {getYouTubeThumbnail(candidate.youtube_url) ? (
+                                      <img 
+                                        src={getYouTubeThumbnail(candidate.youtube_url)!} 
+                                        alt={`${candidate.name} performance`} 
+                                        className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full bg-black flex items-center justify-center">
+                                        <Youtube size={20} className="text-[#9ACD32]/30" />
+                                      </div>
+                                    )}
+                                    
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <div className="w-8 h-8 rounded-full bg-black/50 border border-[#9ACD32] flex items-center justify-center group-hover:scale-110 transition-transform">
+                                        <Youtube size={12} className="text-[#9ACD32]" />
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Text label */}
+                                  <div className="p-2 flex items-center flex-1">
+                                    <Youtube size={14} className="text-[#9ACD32] mr-2 flex-shrink-0" />
+                                    <span className="text-xs text-[#9ACD32]/80 font-mono">Watch Performance</span>
+                                  </div>
+                                </div>
                               </a>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                         
                         {/* Recent Transactions */}

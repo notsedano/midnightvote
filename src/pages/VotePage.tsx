@@ -7,7 +7,7 @@ import Banner from '../components/Banner';
 import LoadingScreen from '../components/LoadingScreen';
 import VoteNotification from '../components/VoteNotification';
 import { motion } from 'framer-motion';
-import { Music, Info, Headphones, Terminal, X } from 'lucide-react';
+import { Music, Info, Headphones, Terminal, X, Clock, Award } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
@@ -40,7 +40,25 @@ const VotePage: React.FC = () => {
     isVisible: false
   });
   const navigate = useNavigate();
+  const [votingEnded, setVotingEnded] = useState<boolean>(false);
+  const [votingEndedAt, setVotingEndedAt] = useState<string | null>(null);
   
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
+  };
+
   // Fetch banner image on load
   useEffect(() => {
     const fetchBannerImage = async () => {
@@ -103,6 +121,35 @@ const VotePage: React.FC = () => {
     }
   }, [votingError]);
 
+  // Check if voting has ended on mount
+  useEffect(() => {
+    const checkVotingEnded = async () => {
+      const value = localStorage.getItem('voting_ended');
+      if (value === 'true') {
+        setVotingEnded(true);
+        // Try to get timestamp
+        const ts = localStorage.getItem('voting_ended_at');
+        if (ts) setVotingEndedAt(ts);
+      } else {
+        // Try to fetch from DB if not in localStorage
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('value, updated_at')
+          .eq('key', 'voting_ended')
+          .single();
+        if (data?.value === 'true') {
+          setVotingEnded(true);
+          localStorage.setItem('voting_ended', 'true');
+          if (data.updated_at) {
+            setVotingEndedAt(data.updated_at);
+            localStorage.setItem('voting_ended_at', data.updated_at);
+          }
+        }
+      }
+    };
+    checkVotingEnded();
+  }, []);
+
   const showNotification = (message: string, type: 'success' | 'error' | 'info') => {
     setNotification({
       message,
@@ -117,6 +164,12 @@ const VotePage: React.FC = () => {
   };
 
   const handleVote = async (candidateId: number) => {
+    // Check if voting has ended
+    if (votingEnded) {
+      setError('Voting has ended. No further votes can be cast.');
+      showNotification('Voting has ended. No further votes can be cast.', 'error');
+      return;
+    }
     // Check if user is logged in
     if (!user) {
       navigate('/login');
@@ -159,20 +212,145 @@ const VotePage: React.FC = () => {
     return <LoadingScreen message="Loading voting interface..." />;
   }
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+  if (votingEnded) {
+    return (
+      <Layout>
+        {/* Add the banner image at the top */}
+        {bannerImage ? (
+          <div className="w-full bg-black relative">
+            <div className="w-full border-b border-[#9ACD32]/30 overflow-hidden relative flex items-center justify-center bg-black">
+              <img 
+                src={bannerImage} 
+                alt="Banner" 
+                className="w-full h-40 object-cover"
+              />
+            </div>
+          </div>
+        ) : null}
+        
+        <Banner 
+          title="MIDNIGHTREBELS &FRIENDS"
+          subtitle="DJ COMPETITION - VOTING ENDED"
+        />
+        
+        <div className="container mx-auto px-4 py-4 relative mb-20">
+          {/* Voting Ended Notice */}
+          <div className="border border-[#9ACD32] bg-black p-4 mb-6 rounded-md">
+            <div className="flex items-center justify-center">
+              <Clock size={24} className="text-[#9ACD32] mr-3" />
+              <div>
+                <h2 className="text-xl font-mono text-[#9ACD32]">Voting Has Ended</h2>
+                <div className="text-gray-300 font-mono text-sm">No further votes can be cast, but you can still explore the DJs.</div>
+                {votingEndedAt && (
+                  <div className="text-xs text-[#9ACD32]/70 font-mono mt-1">Ended: {new Date(votingEndedAt).toLocaleString()}</div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* View Results Button */}
+          <div className="border border-[#9ACD32]/30 bg-black p-3 mb-6 rounded-md">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Award size={16} className="text-[#9ACD32]" />
+                <span className="text-[#9ACD32] font-mono text-sm">COMPETITION RESULTS</span>
+              </div>
+              <Link to="/results">
+                <div className="px-4 py-2 bg-[#9ACD32]/10 border border-[#9ACD32]/30 text-[#9ACD32] font-mono text-xs rounded-sm flex items-center hover:bg-[#9ACD32]/20 transition-colors">
+                  <span>VIEW RESULTS</span>
+                  <span className="transform translate-x-0.5 transition-transform ml-1">→</span>
+                </div>
+              </Link>
+            </div>
+            <div className="text-[#9ACD32]/50 font-mono text-xs mt-2">
+              See vote tallies, rankings and blockchain verification
+            </div>
+          </div>
+          
+          {/* Instructions Panel - Modified for ended voting */}
+          <div className="border border-[#9ACD32] bg-black p-3 mb-6 rounded-md">
+            <div className="border-b border-[#9ACD32]/50 pb-2 mb-3 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Terminal size={16} className="text-[#9ACD32]" />
+                <span className="text-[#9ACD32] font-mono text-sm">VIEWING INSTRUCTIONS</span>
+              </div>
+              <button 
+                onClick={() => setShowInfo(!showInfo)}
+                className="text-[#9ACD32]/70 hover:text-[#9ACD32] flex items-center text-xs"
+              >
+                <Info size={14} className="mr-1" />
+                {showInfo ? 'HIDE' : 'SHOW'} DETAILS
+              </button>
+            </div>
+            
+            <div className="mb-3">
+              <div className="flex items-center text-[#9ACD32] font-mono">
+                <span className="flex items-center"><Music size={16} className="mr-2" /> Tap on YouTube thumbnails to watch videos</span>
+              </div>
+            </div>
+            
+            {showInfo && (
+              <motion.div 
+                className="border border-[#9ACD32]/30 p-3 mb-3 text-xs text-[#9ACD32]/90 font-mono rounded-md"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+              >
+                <p className="mb-2">1. <strong>TAP</strong> on a YouTube thumbnail to watch the DJ's performance video.</p>
+                <p className="mb-2">2. <strong>VOTING HAS ENDED</strong> and no new votes can be cast.</p>
+                <p>3. <strong>RESULTS</strong> will be announced soon.</p>
+              </motion.div>
+            )}
+            
+            <div className="border-t border-[#9ACD32]/30 pt-3 mt-2">
+              <Link to="/results" className="w-full">
+                <div className="px-4 py-3 bg-black/80 border border-[#9ACD32]/30 text-[#9ACD32] font-mono text-sm rounded-md w-full flex items-center justify-center hover:bg-[#9ACD32]/10 transition-colors">
+                  <span className="mr-2">VIEW VOTING RESULTS</span>
+                  <span className="transform translate-x-0.5 transition-transform">→</span>
+                </div>
+              </Link>
+            </div>
+          </div>
+          
+          {/* DJ Cards Grid - Same as original but without voting functionality */}
+          {candidates.length > 0 ? (
+            <motion.div 
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {candidates.map((candidate) => (
+                <motion.div key={candidate.id} variants={cardVariants}>
+                  <VoteCard
+                    id={candidate.id}
+                    name={candidate.name}
+                    genre={candidate.genre}
+                    image={candidate.image_url}
+                    youtube_url={candidate.youtube_url}
+                    instagram_username={candidate.instagram_username}
+                    voteCount={voteCounts[candidate.id] || 0}
+                    totalVotes={totalVotes}
+                    hasVoted={true} // Force "hasVoted" to true to disable voting functionality
+                    userVoted={false}
+                    onVote={() => {}} // Empty function since voting is disabled
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : (
+            <div className="border border-[#9ACD32] bg-black p-6 text-center rounded-md">
+              <Music size={48} className="mx-auto text-[#9ACD32]/50 mb-4" />
+              <p className="text-[#9ACD32] mb-2 font-mono">No candidates available</p>
+              <p className="text-sm text-[#9ACD32]/70 font-mono">Check back soon</p>
+            </div>
+          )}
+        </div>
+        
+        <Navigation />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

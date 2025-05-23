@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Terminal, Disc, XCircle, Youtube, Play, X } from 'lucide-react';
+import { Terminal, Disc, XCircle, Youtube, Play, X, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { logger } from '../lib/logger';
 
@@ -15,34 +15,47 @@ interface VoteCardProps {
   hasVoted: boolean;
   userVoted?: boolean;
   onVote?: (id: number) => void;
+  aiScore?: number;
 }
 
-// Helper function to get YouTube thumbnail URL from YouTube video URL
-const getYouTubeThumbnail = (url: string | null) => {
-  if (!url) return null;
+// Helper function to get YouTube thumbnail URL from video URL
+const getYouTubeThumbnail = (youtubeUrl: string | null): string | null => {
+  if (!youtubeUrl) return null;
   
-  // Extract video ID from different YouTube URL formats
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  
-  if (match && match[2].length === 11) {
-    const videoId = match[2];
-    // Return high-quality thumbnail
+  try {
+    const videoId = getYouTubeVideoId(youtubeUrl);
+    if (!videoId) return null;
+    
+    // Return high quality thumbnail
     return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  } catch (error) {
+    console.error('Error getting YouTube thumbnail:', error);
+    return null;
   }
-  
-  return null;
 };
 
-// Helper function to get YouTube video ID from URL
-const getYouTubeVideoId = (url: string | null) => {
-  if (!url) return null;
+// Extract YouTube video ID from URL
+const getYouTubeVideoId = (youtubeUrl: string | null): string | null => {
+  if (!youtubeUrl) return null;
   
-  // Extract video ID from different YouTube URL formats
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  
-  return (match && match[2].length === 11) ? match[2] : null;
+  try {
+    const url = new URL(youtubeUrl);
+    
+    // Handle youtu.be format
+    if (url.hostname === 'youtu.be') {
+      return url.pathname.substring(1);
+    }
+    
+    // Handle youtube.com format
+    if (url.hostname.includes('youtube.com')) {
+      return url.searchParams.get('v');
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error parsing YouTube URL:', error);
+    return null;
+  }
 };
 
 const VoteCard: React.FC<VoteCardProps> = ({
@@ -57,6 +70,7 @@ const VoteCard: React.FC<VoteCardProps> = ({
   hasVoted,
   userVoted = false,
   onVote,
+  aiScore = 85
 }) => {
   const [isVoting, setIsVoting] = useState(false);
   const [voteProgress, setVoteProgress] = useState(0);
@@ -296,6 +310,30 @@ const VoteCard: React.FC<VoteCardProps> = ({
     }
   };
 
+  // Get AI Score display color
+  const getAIScoreColor = () => {
+    if (aiScore >= 90) return 'text-green-400'; // Excellent score
+    if (aiScore >= 85) return 'text-blue-400'; // Great score
+    if (aiScore >= 80) return 'text-teal-400'; // Good score
+    return 'text-yellow-400'; // Fair score
+  };
+
+  // Get AI Score progress bar color
+  const getAIScoreProgressColor = () => {
+    if (aiScore >= 90) return 'bg-green-500'; // Excellent score
+    if (aiScore >= 85) return 'bg-blue-500'; // Great score
+    if (aiScore >= 80) return 'bg-teal-500'; // Good score
+    return 'bg-yellow-500'; // Fair score
+  };
+
+  // Get AI Score label text
+  const getAIScoreLabel = () => {
+    if (aiScore >= 90) return 'EXCELLENT';
+    if (aiScore >= 85) return 'GREAT'; 
+    if (aiScore >= 80) return 'GOOD';
+    return 'FAIR';
+  };
+
   return (
     <motion.div
       className={`relative border border-[#9ACD32]/30 bg-black rounded-md overflow-hidden ${hasVoted ? 'cursor-default' : 'cursor-pointer'}`}
@@ -321,48 +359,29 @@ const VoteCard: React.FC<VoteCardProps> = ({
       </div>
       
       {/* Body */}
-      <div className="p-4">
-        <h2 className="text-[#9ACD32] font-mono text-lg mb-1">{name}</h2>
+      <div className="p-3">
+        <h3 className="text-white font-mono text-lg font-bold mb-1">{name}</h3>
+        <div className="text-gray-400 text-sm mb-4">{genre}</div>
         
-        <div className="inline-block px-2 py-1 bg-black border border-[#9ACD32]/50 text-[#9ACD32] text-xs rounded-sm mb-4">
-          {genre || "EDM/HOUSE"}
+        {/* AI Score with Progress Bar */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+              <ShieldCheck size={14} className="text-white mr-1" />
+              <span className="text-xs text-white">AI SCORE:</span>
+            </div>
+            <span className={`font-mono text-sm font-bold ${getAIScoreColor()}`}>
+              {aiScore}% <span className="text-[10px] opacity-70">({getAIScoreLabel()})</span>
+            </span>
+          </div>
+          <div className="h-1.5 w-full bg-[#9ACD32]/10 rounded-full overflow-hidden">
+            <div 
+              className={`h-full ${getAIScoreProgressColor()} transition-all duration-500 ease-out`}
+              style={{ width: `${aiScore}%` }}
+            />
+          </div>
         </div>
         
-        {/* Instagram Link - Moved here */}
-        {instagram_username && (
-          <div className="flex mb-3">
-            <a 
-              href={instagram_username.startsWith('http') ? instagram_username : `https://instagram.com/${instagram_username}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              className="flex items-center text-[#9ACD32] hover:text-white transition-colors text-xs"
-              aria-label="Instagram profile"
-            >
-              <span className="mr-1">View Profile</span>
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                width="14" 
-                height="14" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="currentColor" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                className="feather feather-instagram"
-              >
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-              </svg>
-            </a>
-          </div>
-        )}
-        
-        {/* Video thumbnail */}
         <div 
           className="video-thumbnail w-full h-48 bg-black border border-[#9ACD32]/30 flex items-center justify-center mb-4 relative overflow-hidden"
           onClick={youtube_url ? handleVideoThumbnailClick : undefined}
@@ -473,29 +492,20 @@ const VoteCard: React.FC<VoteCardProps> = ({
       
       {/* YouTube Video Modal */}
       <AnimatePresence>
-        {showVideoModal && videoId && (
-          <motion.div
-            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        {showVideoModal && (
+          <motion.div 
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowVideoModal(false)}
-            onTouchEnd={(e) => {
-              // Only close if touch is on the backdrop, not the modal itself
-              if (e.target === e.currentTarget) {
-                setShowVideoModal(false);
-              }
-            }}
           >
             <motion.div 
               ref={videoModalRef}
-              className="bg-black border border-[#9ACD32] rounded-md w-full max-w-3xl overflow-hidden touch-none"
+              className="w-full max-w-3xl mx-4 bg-black border border-[#9ACD32] rounded-md overflow-hidden"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: 'spring', damping: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => e.stopPropagation()}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
               <div className="p-2 flex justify-between items-center border-b border-[#9ACD32]/30">
                 <div className="text-[#9ACD32] font-mono text-sm flex items-center">
